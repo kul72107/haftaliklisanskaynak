@@ -13,6 +13,16 @@
         <SolidColorBrush x:Key="Line" Color="#D9E0EA"/>
         <SolidColorBrush x:Key="Accent" Color="#1F7A6D"/>
 
+        <Style TargetType="ToolTip">
+            <Setter Property="MaxWidth" Value="380"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Background" Value="#111827"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#25D366"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
         <Style x:Key="NavButtonStyle" TargetType="Button">
             <Setter Property="Height" Value="42"/>
             <Setter Property="Margin" Value="14,3"/>
@@ -23,6 +33,9 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="15000"/>
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -53,6 +66,9 @@
             <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="15000"/>
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -85,6 +101,8 @@
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="15000"/>
         </Style>
 
         <Style TargetType="PasswordBox">
@@ -93,17 +111,29 @@
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="15000"/>
         </Style>
 
         <Style TargetType="ComboBox">
             <Setter Property="Height" Value="34"/>
             <Setter Property="Padding" Value="6,4"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="15000"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="15000"/>
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
         </Style>
 
         <Style TargetType="ListBox">
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="15000"/>
         </Style>
     </Window.Resources>
 
@@ -113,27 +143,27 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="#121A27">
+        <Border Grid.Column="0" Background="#121A27" ToolTip="Sol menü. Uygulamanın farklı ayar ve izleme sayfalarına buradan geçersiniz.">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Top" Margin="18,22,18,18">
-                    <TextBlock Text="Modern Yedek" Foreground="White" FontSize="23" FontWeight="Bold"/>
-                    <TextBlock Text="ZIP, zamanlama ve bulut" Foreground="#A8B4C7" FontSize="12" Margin="0,5,0,0"/>
+                    <TextBlock Text="Modern Yedek" Foreground="White" FontSize="23" FontWeight="Bold" ToolTip="Uygulamanın ana adı. Bu araç dosya ve klasörlerinizi yedeklemek için kullanılır."/>
+                    <TextBlock Text="ZIP, zamanlama ve bulut" Foreground="#A8B4C7" FontSize="12" Margin="0,5,0,0" ToolTip="Uygulama ZIP yedekleri oluşturabilir, zamanlayabilir ve isterseniz buluta yükleyebilir."/>
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Bottom" Margin="14,14,14,20">
-                    <TextBlock x:Name="StoragePathText" Foreground="#A8B4C7" FontSize="11" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="StoragePathText" Foreground="#A8B4C7" FontSize="11" TextWrapping="Wrap" ToolTip="Ayar, log ve şifreli secret dosyalarının bilgisayarda hangi klasörde tutulduğunu gösterir."/>
                 </StackPanel>
 
                 <StackPanel>
-                    <Button Style="{StaticResource NavButtonStyle}" Content="Dashboard" Tag="Dashboard" Click="Nav_Click"/>
-                    <Button Style="{StaticResource NavButtonStyle}" Content="Kaynaklar" Tag="Sources" Click="Nav_Click"/>
-                    <Button Style="{StaticResource NavButtonStyle}" Content="Hedefler" Tag="Targets" Click="Nav_Click"/>
-                    <Button Style="{StaticResource NavButtonStyle}" Content="Zamanlama" Tag="Schedule" Click="Nav_Click"/>
-                    <Button Style="{StaticResource NavButtonStyle}" Content="Bulut" Tag="Cloud" Click="Nav_Click"/>
-                    <Button Style="{StaticResource NavButtonStyle}" Content="Güvenlik" Tag="Security" Click="Nav_Click"/>
-                    <Button Style="{StaticResource NavButtonStyle}" Content="Lisans" Tag="License" Click="Nav_Click"/>
-                    <Button Style="{StaticResource NavButtonStyle}" Content="Loglar" Tag="Logs" Click="Nav_Click"/>
-                    <Button Style="{StaticResource NavButtonStyle}" Content="Ayarlar" Tag="Settings" Click="Nav_Click"/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Dashboard" Tag="Dashboard" Click="Nav_Click" ToolTip="Genel durumu, son yedeği, sıradaki zamanı, disk alanını ve bulut durumunu gösterir."/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Kaynaklar" Tag="Sources" Click="Nav_Click" ToolTip="Yedeklenecek dosya veya klasörleri buradan seçersiniz."/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Hedefler" Tag="Targets" Click="Nav_Click" ToolTip="Yedek ZIP dosyalarının hangi klasöre kaydedileceğini buradan ayarlarsınız."/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Zamanlama" Tag="Schedule" Click="Nav_Click" ToolTip="Yedeklemenin hangi gün ve saatlerde otomatik çalışacağını buradan ayarlarsınız."/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Bulut" Tag="Cloud" Click="Nav_Click" ToolTip="Google Cloud Storage bağlantısı ve yedekten sonra buluta yükleme ayarları buradadır."/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Güvenlik" Tag="Security" Click="Nav_Click" ToolTip="Parola ve Google key gibi hassas bilgileri şifreli secret dosyasına kaydetmek için kullanılır."/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Lisans" Tag="License" Click="Nav_Click" ToolTip="Lisans anahtarınızı etkinleştirmek, doğrulamak veya lisans durumunu görmek için kullanılır."/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Loglar" Tag="Logs" Click="Nav_Click" ToolTip="Yedekleme sırasında oluşan bilgi, uyarı ve hata kayıtlarını gösterir."/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Ayarlar" Tag="Settings" Click="Nav_Click" ToolTip="Profil adı, ZIP seçeneği ve eski ini dosyasını içe aktarma ayarları buradadır."/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -145,29 +175,30 @@
                 <RowDefinition Height="44"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Background="#E9FFF1" BorderBrush="#25D366" BorderThickness="0,0,0,3">
+            <Border Grid.Row="0" Background="#E9FFF1" BorderBrush="#25D366" BorderThickness="0,0,0,3" ToolTip="Lisans iletişim şeridi. Lisans almak veya mevcut lisansı yükseltmek için WhatsApp numarasını gösterir.">
                 <Grid Margin="24,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="96"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Border Width="78" Height="78" Background="#25D366" CornerRadius="39" HorizontalAlignment="Left" VerticalAlignment="Center">
-                        <TextBlock Text="☎" Foreground="White" FontSize="46" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Border Width="78" Height="78" Background="#25D366" CornerRadius="39" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip="WhatsApp üzerinden lisans talep edebileceğinizi gösteren iletişim simgesi.">
+                        <TextBlock Text="☎" Foreground="White" FontSize="46" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="WhatsApp iletişim simgesi."/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock x:Name="PageTitleText" Text="Dashboard" Visibility="Collapsed"/>
                         <TextBlock x:Name="PageSubtitleText" Text="Yedekleme durumunu ve önemli uyarıları tek ekrandan takip edin." Visibility="Collapsed"/>
-                        <TextBlock x:Name="LicenseBannerTitleText" Text="LİSANS GEREKLİ" Foreground="#0B3D22" FontSize="32" FontWeight="Black" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="LicenseBannerTitleText" Text="LİSANS GEREKLİ" Foreground="#0B3D22" FontSize="32" FontWeight="Black" TextWrapping="Wrap" ToolTip="Lisans yoksa lisans gerektiğini, lisans varsa yükseltme bilgisini gösterir."/>
                         <TextBlock Text="LİSANS İÇİN WHATSAPPTAN BU NUMARADAN LİSANS TALEP EDİNİZ: 05300221838"
                                    Foreground="#0B3D22"
                                    FontSize="21"
                                    FontWeight="Bold"
-                                   TextWrapping="Wrap"/>
+                                   TextWrapping="Wrap"
+                                   ToolTip="Lisans almak için bu WhatsApp numarasından iletişim kurmanız gerekir: 05300221838"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="Şimdi Yedekle" Style="{StaticResource PrimaryButtonStyle}" Click="RunBackup_Click"/>
-                        <Button Content="Kaydet" Style="{StaticResource SecondaryButtonStyle}" Click="SaveSettings_Click"/>
+                        <Button Content="Şimdi Yedekle" Style="{StaticResource PrimaryButtonStyle}" Click="RunBackup_Click" ToolTip="Ayarları kullanarak hemen manuel yedekleme başlatır. Lisans gerekiyorsa önce lisans kontrol edilir."/>
+                        <Button Content="Kaydet" Style="{StaticResource SecondaryButtonStyle}" Click="SaveSettings_Click" ToolTip="Ekrandaki tüm ayarları bilgisayara kaydeder. Değişikliklerden sonra bu butona basın."/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -176,71 +207,71 @@
                 <Grid Margin="24">
                     <StackPanel x:Name="DashboardPanel">
                         <UniformGrid Columns="4">
-                            <Border Style="{StaticResource CardStyle}">
+                            <Border Style="{StaticResource CardStyle}" ToolTip="Son yedekleme veya uygulama durumunu hızlıca gösterir.">
                                 <StackPanel>
-                                    <TextBlock Text="Son Durum" Foreground="{StaticResource Muted}" FontSize="12"/>
-                                    <TextBlock x:Name="DashboardStatusText" Text="Hazır" Foreground="{StaticResource Ink}" FontSize="22" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                                    <TextBlock Text="Son Durum" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Uygulamanın hazır, çalışıyor, hata veya lisans gerekli gibi genel durumunu belirtir."/>
+                                    <TextBlock x:Name="DashboardStatusText" Text="Hazır" Foreground="{StaticResource Ink}" FontSize="22" FontWeight="SemiBold" Margin="0,8,0,0" ToolTip="En son bilinen durum burada yazılır."/>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource CardStyle}">
+                            <Border Style="{StaticResource CardStyle}" ToolTip="Zamanlama açıksa bir sonraki otomatik yedekleme zamanını gösterir.">
                                 <StackPanel>
-                                    <TextBlock Text="Sıradaki Çalışma" Foreground="{StaticResource Muted}" FontSize="12"/>
-                                    <TextBlock x:Name="NextRunText" Text="-" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Sıradaki Çalışma" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Otomatik yedeklemenin bir sonraki çalışacağı tarih ve saat."/>
+                                    <TextBlock x:Name="NextRunText" Text="-" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap" ToolTip="Zamanlama kapalıysa burada Kapalı veya boş değer görünebilir."/>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource CardStyle}">
+                            <Border Style="{StaticResource CardStyle}" ToolTip="Seçili hedef diskteki boş alan bilgisini gösterir.">
                                 <StackPanel>
-                                    <TextBlock Text="Hedef Disk" Foreground="{StaticResource Muted}" FontSize="12"/>
-                                    <TextBlock x:Name="DiskSpaceText" Text="-" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Hedef Disk" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Yedeklerin kaydedileceği hedef diskin alan durumu."/>
+                                    <TextBlock x:Name="DiskSpaceText" Text="-" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap" ToolTip="Yedek başlamadan önce hedefte yeterli boş alan olup olmadığını anlamaya yardımcı olur."/>
                                 </StackPanel>
                             </Border>
-                            <Border Style="{StaticResource CardStyle}">
+                            <Border Style="{StaticResource CardStyle}" ToolTip="Google Cloud Storage ayarlarının genel durumunu gösterir.">
                                 <StackPanel>
-                                    <TextBlock Text="Bulut" Foreground="{StaticResource Muted}" FontSize="12"/>
-                                    <TextBlock x:Name="CloudStateText" Text="Kapalı" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                                    <TextBlock Text="Bulut" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Bulut yedekleme açık mı, bucket bilgisi var mı gibi kısa durum bilgisi."/>
+                                    <TextBlock x:Name="CloudStateText" Text="Kapalı" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" ToolTip="Bulut kapalıysa yerel yedek alınır ama Google Cloud'a yüklenmez."/>
                                 </StackPanel>
                             </Border>
                         </UniformGrid>
 
-                        <Border Style="{StaticResource CardStyle}" Margin="0,8,0,14">
+                        <Border Style="{StaticResource CardStyle}" Margin="0,8,0,14" ToolTip="Son yedekleme dosyasını, hash bilgisini ve son hata özetini gösterir.">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="2*"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="Yedek Özeti" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
-                                    <TextBlock x:Name="LastArchiveText" Text="Henüz yedek alınmadı." Margin="0,12,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
-                                    <TextBlock x:Name="ErrorSummaryText" Text="Kritik hata yok." Margin="0,8,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Yedek Özeti" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource Ink}" ToolTip="Son yedekleme hakkında kısa özet alanı."/>
+                                    <TextBlock x:Name="LastArchiveText" Text="Henüz yedek alınmadı." Margin="0,12,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" ToolTip="Son oluşturulan ZIP dosyasının yolu, SHA256 hash değeri ve dosya boyutu burada görünür."/>
+                                    <TextBlock x:Name="ErrorSummaryText" Text="Kritik hata yok." Margin="0,8,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" ToolTip="Son işlemde oluşan önemli hata mesajlarının kısa özeti."/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                                    <Button Content="Eski INI İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportLegacy_Click"/>
-                                    <Button Content="Logları Yenile" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshLogs_Click"/>
+                                    <Button Content="Eski INI İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportLegacy_Click" ToolTip="Eski yedekaldat.ini dosyasındaki kaynak, hedef ve zamanlama ayarlarını yeni uygulamaya taşır."/>
+                                    <Button Content="Logları Yenile" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshLogs_Click" ToolTip="Log listesini dosyadan yeniden okur ve ekrandaki kayıtları günceller."/>
                                 </StackPanel>
                             </Grid>
                         </Border>
                     </StackPanel>
 
                     <StackPanel x:Name="SourcesPanel" Visibility="Collapsed">
-                        <Border Style="{StaticResource CardStyle}">
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Yedeklenecek dosya ve klasörleri burada yönetirsiniz.">
                             <StackPanel>
-                                <TextBlock Text="Kaynak klasörler ve dosyalar" FontSize="18" FontWeight="SemiBold"/>
-                                <ListBox x:Name="SourcesList" Height="190" Margin="0,12,0,12"/>
+                                <TextBlock Text="Kaynak klasörler ve dosyalar" FontSize="18" FontWeight="SemiBold" ToolTip="Yedek içine alınacak tüm kaynaklar bu bölümde listelenir."/>
+                                <ListBox x:Name="SourcesList" Height="190" Margin="0,12,0,12" ToolTip="Yedeklenecek kayıtlı kaynakları gösterir. Silmek için listedeki kaydı seçip Sil butonuna basın."/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="138"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="SourcePathBox"/>
-                                    <ComboBox x:Name="SourceTypeBox" Grid.Column="1" Margin="8,0,0,0" SelectedIndex="0">
-                                        <ComboBoxItem Content="Klasör"/>
-                                        <ComboBoxItem Content="Dosya"/>
+                                    <TextBox x:Name="SourcePathBox" ToolTip="Yedeklenecek klasör veya dosya yolunu buraya yazın ya da Seç butonu ile bulun."/>
+                                    <ComboBox x:Name="SourceTypeBox" Grid.Column="1" Margin="8,0,0,0" SelectedIndex="0" ToolTip="Eklediğiniz yolun klasör mü yoksa tek dosya mı olduğunu seçin.">
+                                        <ComboBoxItem Content="Klasör" ToolTip="Bir klasör seçerseniz içindeki dosyalar yedeklenir."/>
+                                        <ComboBoxItem Content="Dosya" ToolTip="Tek bir dosya seçerseniz yalnızca o dosya yedeklenir."/>
                                     </ComboBox>
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
-                                        <Button Content="Seç" Style="{StaticResource SecondaryButtonStyle}" Click="BrowseSource_Click"/>
-                                        <Button Content="Ekle" Style="{StaticResource PrimaryButtonStyle}" Click="AddSource_Click"/>
-                                        <Button Content="Sil" Style="{StaticResource SecondaryButtonStyle}" Click="RemoveSource_Click"/>
+                                        <Button Content="Seç" Style="{StaticResource SecondaryButtonStyle}" Click="BrowseSource_Click" ToolTip="Windows dosya/klasör seçicisini açar ve kaynak yolunu otomatik doldurur."/>
+                                        <Button Content="Ekle" Style="{StaticResource PrimaryButtonStyle}" Click="AddSource_Click" ToolTip="Yol kutusundaki kaynak dosya veya klasörü yedekleme listesine ekler."/>
+                                        <Button Content="Sil" Style="{StaticResource SecondaryButtonStyle}" Click="RemoveSource_Click" ToolTip="Listede seçili olan kaynağı yedekleme listesinden kaldırır."/>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
@@ -248,37 +279,37 @@
                     </StackPanel>
 
                     <StackPanel x:Name="TargetsPanel" Visibility="Collapsed">
-                        <Border Style="{StaticResource CardStyle}">
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Yedek ZIP dosyalarının kaydedileceği hedef klasörleri burada yönetirsiniz.">
                             <StackPanel>
-                                <TextBlock Text="Hedef klasörler" FontSize="18" FontWeight="SemiBold"/>
-                                <ListBox x:Name="TargetsList" Height="170" Margin="0,12,0,12"/>
+                                <TextBlock Text="Hedef klasörler" FontSize="18" FontWeight="SemiBold" ToolTip="Yedek dosyalarının kaydedileceği klasörler."/>
+                                <ListBox x:Name="TargetsList" Height="170" Margin="0,12,0,12" ToolTip="Tanımlı hedef klasörleri gösterir. Yedekler bu klasörlerden etkin olanlara yazılır."/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="TargetPathBox"/>
+                                    <TextBox x:Name="TargetPathBox" ToolTip="Yedek ZIP dosyasının kaydedileceği klasör yolunu yazın veya Seç butonu ile bulun."/>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
-                                        <Button Content="Seç" Style="{StaticResource SecondaryButtonStyle}" Click="BrowseTarget_Click"/>
-                                        <Button Content="Ekle" Style="{StaticResource PrimaryButtonStyle}" Click="AddTarget_Click"/>
-                                        <Button Content="Sil" Style="{StaticResource SecondaryButtonStyle}" Click="RemoveTarget_Click"/>
+                                        <Button Content="Seç" Style="{StaticResource SecondaryButtonStyle}" Click="BrowseTarget_Click" ToolTip="Yedeklerin kaydedileceği hedef klasörü seçmenizi sağlar."/>
+                                        <Button Content="Ekle" Style="{StaticResource PrimaryButtonStyle}" Click="AddTarget_Click" ToolTip="Yol kutusundaki klasörü hedef listesine ekler."/>
+                                        <Button Content="Sil" Style="{StaticResource SecondaryButtonStyle}" Click="RemoveTarget_Click" ToolTip="Listede seçili hedef klasörü kaldırır. Var olan ZIP dosyalarını silmez."/>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource CardStyle}">
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Eski yedek dosyalarının otomatik temizlenmesini ayarlarsınız.">
                             <StackPanel>
-                                <TextBlock Text="Rotasyon" FontSize="18" FontWeight="SemiBold"/>
-                                <CheckBox x:Name="RetentionEnabledCheck" Content="Eski yedekleri otomatik temizle" Margin="0,14,0,10"/>
+                                <TextBlock Text="Rotasyon" FontSize="18" FontWeight="SemiBold" ToolTip="Yedek klasörünün gereksiz büyümesini önleyen temizlik ayarları."/>
+                                <CheckBox x:Name="RetentionEnabledCheck" Content="Eski yedekleri otomatik temizle" Margin="0,14,0,10" ToolTip="Açık olursa uygulama belirlenen gün veya toplam boyut sınırını aşan eski yedekleri temizler."/>
                                 <UniformGrid Columns="2">
                                     <StackPanel Margin="0,0,12,0">
-                                        <TextBlock Text="Saklama günü" Foreground="{StaticResource Muted}"/>
-                                        <TextBox x:Name="KeepDaysBox" Text="30"/>
+                                        <TextBlock Text="Saklama günü" Foreground="{StaticResource Muted}" ToolTip="Yedeklerin kaç gün saklanacağını belirler."/>
+                                        <TextBox x:Name="KeepDaysBox" Text="30" ToolTip="Bu günden daha eski yedekler rotasyon açıksa temizlenebilir. Örnek: 30"/>
                                     </StackPanel>
                                     <StackPanel>
-                                        <TextBlock Text="Maksimum toplam boyut (GB)" Foreground="{StaticResource Muted}"/>
-                                        <TextBox x:Name="MaxGbBox" Text="50"/>
+                                        <TextBlock Text="Maksimum toplam boyut (GB)" Foreground="{StaticResource Muted}" ToolTip="Hedef klasördeki yedeklerin toplam boyut sınırı."/>
+                                        <TextBox x:Name="MaxGbBox" Text="50" ToolTip="Yedekler toplamda bu GB sınırını aşarsa en eski yedeklerden başlanarak temizlik yapılır."/>
                                     </StackPanel>
                                 </UniformGrid>
                             </StackPanel>
@@ -286,141 +317,141 @@
                     </StackPanel>
 
                     <StackPanel x:Name="SchedulePanel" Visibility="Collapsed">
-                        <Border Style="{StaticResource CardStyle}">
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Otomatik yedekleme günlerini ve saatlerini buradan ayarlarsınız.">
                             <StackPanel>
-                                <TextBlock Text="Periyodik zamanlama" FontSize="18" FontWeight="SemiBold"/>
-                                <CheckBox x:Name="ScheduleEnabledCheck" Content="Zamanlama aktif" Margin="0,14,0,12"/>
+                                <TextBlock Text="Periyodik zamanlama" FontSize="18" FontWeight="SemiBold" ToolTip="Yedeklemenin belirli gün ve saatlerde kendiliğinden çalışmasını sağlar."/>
+                                <CheckBox x:Name="ScheduleEnabledCheck" Content="Zamanlama aktif" Margin="0,14,0,12" ToolTip="Açık olursa uygulama seçilen gün ve saatlerde otomatik yedekleme başlatır."/>
                                 <UniformGrid Columns="7">
-                                    <CheckBox x:Name="DayMondayCheck" Content="Pzt"/>
-                                    <CheckBox x:Name="DayTuesdayCheck" Content="Sal"/>
-                                    <CheckBox x:Name="DayWednesdayCheck" Content="Çar"/>
-                                    <CheckBox x:Name="DayThursdayCheck" Content="Per"/>
-                                    <CheckBox x:Name="DayFridayCheck" Content="Cum"/>
-                                    <CheckBox x:Name="DaySaturdayCheck" Content="Cmt"/>
-                                    <CheckBox x:Name="DaySundayCheck" Content="Paz"/>
+                                    <CheckBox x:Name="DayMondayCheck" Content="Pzt" ToolTip="Pazartesi günü otomatik yedekleme çalışsın istiyorsanız seçin."/>
+                                    <CheckBox x:Name="DayTuesdayCheck" Content="Sal" ToolTip="Salı günü otomatik yedekleme çalışsın istiyorsanız seçin."/>
+                                    <CheckBox x:Name="DayWednesdayCheck" Content="Çar" ToolTip="Çarşamba günü otomatik yedekleme çalışsın istiyorsanız seçin."/>
+                                    <CheckBox x:Name="DayThursdayCheck" Content="Per" ToolTip="Perşembe günü otomatik yedekleme çalışsın istiyorsanız seçin."/>
+                                    <CheckBox x:Name="DayFridayCheck" Content="Cum" ToolTip="Cuma günü otomatik yedekleme çalışsın istiyorsanız seçin."/>
+                                    <CheckBox x:Name="DaySaturdayCheck" Content="Cmt" ToolTip="Cumartesi günü otomatik yedekleme çalışsın istiyorsanız seçin."/>
+                                    <CheckBox x:Name="DaySundayCheck" Content="Paz" ToolTip="Pazar günü otomatik yedekleme çalışsın istiyorsanız seçin."/>
                                 </UniformGrid>
-                                <ListBox x:Name="ScheduleTimesList" Height="120" Margin="0,16,0,12"/>
+                                <ListBox x:Name="ScheduleTimesList" Height="120" Margin="0,16,0,12" ToolTip="Otomatik yedekleme saatlerini listeler. Saat silmek için bir saat seçin."/>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBox x:Name="NewTimeBox" Width="110" Text="18:00"/>
-                                    <Button Content="Saat Ekle" Style="{StaticResource PrimaryButtonStyle}" Click="AddScheduleTime_Click"/>
-                                    <Button Content="Saat Sil" Style="{StaticResource SecondaryButtonStyle}" Click="RemoveScheduleTime_Click"/>
+                                    <TextBox x:Name="NewTimeBox" Width="110" Text="18:00" ToolTip="Yeni otomatik çalışma saatini 24 saat formatında yazın. Örnek: 18:00"/>
+                                    <Button Content="Saat Ekle" Style="{StaticResource PrimaryButtonStyle}" Click="AddScheduleTime_Click" ToolTip="Saat kutusundaki değeri otomatik yedekleme saatleri listesine ekler."/>
+                                    <Button Content="Saat Sil" Style="{StaticResource SecondaryButtonStyle}" Click="RemoveScheduleTime_Click" ToolTip="Listede seçili olan otomatik çalışma saatini siler."/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
                     </StackPanel>
 
                     <StackPanel x:Name="CloudPanel" Visibility="Collapsed">
-                        <Border Style="{StaticResource CardStyle}">
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Google Cloud Storage üzerinden buluta yedek yükleme ayarları.">
                             <StackPanel>
-                                <TextBlock Text="Google Cloud Storage" FontSize="18" FontWeight="SemiBold"/>
-                                <CheckBox x:Name="CloudEnabledCheck" Content="Bulut yedekleme aktif" Margin="0,14,0,8"/>
-                                <CheckBox x:Name="UploadAfterBackupCheck" Content="Yedekten sonra buluta yükle" Margin="0,0,0,8"/>
-                                <CheckBox x:Name="DeleteLocalAfterUploadCheck" Content="Başarılı bulut yüklemesinden sonra yerel ZIP dosyasını sil" Margin="0,0,0,14"/>
+                                <TextBlock Text="Google Cloud Storage" FontSize="18" FontWeight="SemiBold" ToolTip="Kendi Google Cloud bucket alanınıza ZIP yedekleri yüklemek için kullanılır."/>
+                                <CheckBox x:Name="CloudEnabledCheck" Content="Bulut yedekleme aktif" Margin="0,14,0,8" ToolTip="Açık olursa bulut özellikleri kullanılabilir hale gelir."/>
+                                <CheckBox x:Name="UploadAfterBackupCheck" Content="Yedekten sonra buluta yükle" Margin="0,0,0,8" ToolTip="Açık olursa başarılı yerel yedekten sonra ZIP dosyası Google Cloud bucket'a yüklenir."/>
+                                <CheckBox x:Name="DeleteLocalAfterUploadCheck" Content="Başarılı bulut yüklemesinden sonra yerel ZIP dosyasını sil" Margin="0,0,0,14" ToolTip="Açık olursa buluta yükleme başarılı olduktan sonra yerel ZIP silinir. Yerel kopya istemiyorsanız kullanın."/>
                                 <UniformGrid Columns="2">
                                     <StackPanel Margin="0,0,12,0">
-                                        <TextBlock Text="Bucket adı" Foreground="{StaticResource Muted}"/>
-                                        <TextBox x:Name="BucketBox"/>
+                                        <TextBlock Text="Bucket adı" Foreground="{StaticResource Muted}" ToolTip="Google Cloud Storage içinde oluşturduğunuz bucket'ın adı."/>
+                                        <TextBox x:Name="BucketBox" ToolTip="Yedeklerin yükleneceği Google Cloud Storage bucket adını yazın. Örnek: sirket-yedekleri"/>
                                     </StackPanel>
                                     <StackPanel>
-                                        <TextBlock Text="Klasör prefix" Foreground="{StaticResource Muted}"/>
-                                        <TextBox x:Name="PrefixBox" Text="yedekler"/>
+                                        <TextBlock Text="Klasör prefix" Foreground="{StaticResource Muted}" ToolTip="Bulutta ZIP dosyalarının hangi sanal klasör altında görüneceğini belirler."/>
+                                        <TextBox x:Name="PrefixBox" Text="yedekler" ToolTip="Buluttaki klasör ön ekidir. Örnek: yedekler veya ofis1/yedekler"/>
                                     </StackPanel>
                                 </UniformGrid>
                                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                                    <Button Content="Service Account JSON İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportGoogleKey_Click"/>
-                                    <Button Content="Bağlantıyı Test Et" Style="{StaticResource PrimaryButtonStyle}" Click="TestCloud_Click"/>
+                                    <Button Content="Service Account JSON İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportGoogleKey_Click" ToolTip="Google Cloud service account JSON dosyasını seçer ve içeriğini şifreli secret dosyasına kaydeder."/>
+                                    <Button Content="Bağlantıyı Test Et" Style="{StaticResource PrimaryButtonStyle}" Click="TestCloud_Click" ToolTip="Bucket adı ve service account key ile Google Cloud bağlantısının çalışıp çalışmadığını kontrol eder."/>
                                 </StackPanel>
-                                <TextBlock x:Name="GoogleKeyStatusText" Text="Google key yüklenmedi." Foreground="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="GoogleKeyStatusText" Text="Google key yüklenmedi." Foreground="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap" ToolTip="Google key'in yüklenip yüklenmediğini veya bağlantı testinin sonucunu gösterir."/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
 
                     <StackPanel x:Name="SecurityPanel" Visibility="Collapsed">
-                        <Border Style="{StaticResource CardStyle}">
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Hassas bilgiler Windows kullanıcınıza bağlı şekilde şifrelenerek saklanır.">
                             <StackPanel>
-                                <TextBlock Text="Şifreli secret dosyası" FontSize="18" FontWeight="SemiBold"/>
-                                <TextBlock Text="Mail parolası, ZIP parolası ve Google key içeriği secrets.dat içinde Windows kullanıcı hesabına bağlı olarak şifrelenir." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,16"/>
+                                <TextBlock Text="Şifreli secret dosyası" FontSize="18" FontWeight="SemiBold" ToolTip="Parola ve key gibi hassas veriler normal ayar dosyasına değil, şifreli secrets.dat dosyasına yazılır."/>
+                                <TextBlock Text="Mail parolası, ZIP parolası ve Google key içeriği secrets.dat içinde Windows kullanıcı hesabına bağlı olarak şifrelenir." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,16" ToolTip="Bu bilgiler düz metin olarak saklanmaz; başka Windows kullanıcısı genellikle okuyamaz."/>
                                 <UniformGrid Columns="2">
                                     <StackPanel Margin="0,0,12,0">
-                                        <TextBlock Text="Mail parolası" Foreground="{StaticResource Muted}"/>
-                                        <PasswordBox x:Name="MailPasswordBox"/>
+                                        <TextBlock Text="Mail parolası" Foreground="{StaticResource Muted}" ToolTip="Varsa mail gönderimi için kullanılacak parolayı girin."/>
+                                        <PasswordBox x:Name="MailPasswordBox" ToolTip="Mail parolasını buraya yazın. Kaydedilince şifreli secrets.dat dosyasına aktarılır ve kutu temizlenir."/>
                                     </StackPanel>
                                     <StackPanel>
-                                        <TextBlock Text="ZIP parola notu" Foreground="{StaticResource Muted}"/>
-                                        <PasswordBox x:Name="ZipPasswordBox"/>
+                                        <TextBlock Text="ZIP parola notu" Foreground="{StaticResource Muted}" ToolTip="ZIP ile ilgili parola/not bilgisini şifreli şekilde saklamak için kullanılır."/>
+                                        <PasswordBox x:Name="ZipPasswordBox" ToolTip="ZIP parola notunu buraya yazın. Kaydedilince şifreli secret dosyasına aktarılır."/>
                                     </StackPanel>
                                 </UniformGrid>
                                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                                    <Button Content="Secret Kaydet" Style="{StaticResource PrimaryButtonStyle}" Click="SaveSecrets_Click"/>
+                                    <Button Content="Secret Kaydet" Style="{StaticResource PrimaryButtonStyle}" Click="SaveSecrets_Click" ToolTip="Girilen mail parolası ve ZIP parola notunu şifreli secrets.dat dosyasına kaydeder."/>
                                 </StackPanel>
-                                <TextBlock x:Name="SecretStatusText" Text="Secret durumu bekleniyor." Foreground="{StaticResource Muted}" Margin="0,12,0,0"/>
+                                <TextBlock x:Name="SecretStatusText" Text="Secret durumu bekleniyor." Foreground="{StaticResource Muted}" Margin="0,12,0,0" ToolTip="Mail parolası, ZIP notu ve Google key bilgisinin kayıtlı olup olmadığını gösterir."/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
 
                     <StackPanel x:Name="LicensePanel" Visibility="Collapsed">
-                        <Border Style="{StaticResource CardStyle}">
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Manuel lisans anahtarını etkinleştirme ve mevcut lisans durumunu izleme alanı.">
                             <StackPanel>
-                                <TextBlock Text="Lisans" FontSize="18" FontWeight="SemiBold"/>
-                                <TextBlock Text="Size verilen manuel lisans anahtarini girin. Key ilk aktivasyonda bu bilgisayara baglanir ve sure o anda baslar." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,16"/>
-                                <CheckBox x:Name="LicenseRequiredCheck" Content="Lisans olmadan yedeklemeyi kilitle" Margin="0,0,0,12"/>
-                                <TextBlock Text="Lisans anahtari" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
-                                <TextBox x:Name="LicenseKeyBox"/>
+                                <TextBlock Text="Lisans" FontSize="18" FontWeight="SemiBold" ToolTip="Uygulamanın çalışması için kullanılan lisans bilgileri."/>
+                                <TextBlock Text="Size verilen manuel lisans anahtarini girin. Key ilk aktivasyonda bu bilgisayara baglanir ve sure o anda baslar." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,16" ToolTip="Key ilk kullanıldığı bilgisayara bağlanır. Süre ilk aktivasyonda başlar."/>
+                                <CheckBox x:Name="LicenseRequiredCheck" Content="Lisans olmadan yedeklemeyi kilitle" Margin="0,0,0,12" ToolTip="Açık olursa geçerli lisans yokken yedekleme başlatılamaz."/>
+                                <TextBlock Text="Lisans anahtari" Foreground="{StaticResource Muted}" Margin="0,4,0,0" ToolTip="Size verilen manuel lisans key'i."/>
+                                <TextBox x:Name="LicenseKeyBox" ToolTip="Size verilen lisans anahtarını buraya yapıştırın. Örnek: MY-...."/>
                                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                                    <Button Content="Aktiflestir" Style="{StaticResource PrimaryButtonStyle}" Click="ActivateLicense_Click"/>
-                                    <Button Content="Dogrula" Style="{StaticResource SecondaryButtonStyle}" Click="ValidateLicense_Click"/>
+                                    <Button Content="Aktiflestir" Style="{StaticResource PrimaryButtonStyle}" Click="ActivateLicense_Click" ToolTip="Girilen lisans anahtarını internet listesinden kontrol eder ve bu bilgisayarda etkinleştirir."/>
+                                    <Button Content="Dogrula" Style="{StaticResource SecondaryButtonStyle}" Click="ValidateLicense_Click" ToolTip="Mevcut lisansın hâlâ geçerli, süresi dolmamış ve iptal edilmemiş olduğunu kontrol eder."/>
                                 </StackPanel>
-                                <TextBlock x:Name="LicenseStateText" Text="Lisans durumu bekleniyor." Foreground="{StaticResource Ink}" FontWeight="SemiBold" Margin="0,14,0,0"/>
-                                <TextBlock x:Name="LicenseDetailText" Text="Henuz lisans dogrulanmadi." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                <TextBlock x:Name="LicenseStateText" Text="Lisans durumu bekleniyor." Foreground="{StaticResource Ink}" FontWeight="SemiBold" Margin="0,14,0,0" ToolTip="Lisansın aktif, geçersiz, süresi dolmuş veya iptal edilmiş olup olmadığını gösterir."/>
+                                <TextBlock x:Name="LicenseDetailText" Text="Henuz lisans dogrulanmadi." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0" ToolTip="Lisans planı, bitiş zamanı, offline izin süresi ve cihaz kullanım bilgileri burada görünür."/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
 
                     <StackPanel x:Name="LogsPanel" Visibility="Collapsed">
-                        <Border Style="{StaticResource CardStyle}">
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Yedekleme işlemlerinin ayrıntılı kayıtlarını inceleme alanı.">
                             <StackPanel>
-                                <TextBlock Text="Loglar" FontSize="18" FontWeight="SemiBold"/>
-                                <ListBox x:Name="LogsList" Height="330" Margin="0,12,0,12" SelectionChanged="LogsList_SelectionChanged"/>
-                                <TextBox x:Name="LogDetailBox" Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" IsReadOnly="True"/>
+                                <TextBlock Text="Loglar" FontSize="18" FontWeight="SemiBold" ToolTip="Uygulamanın yedekleme, doğrulama, bulut ve hata kayıtları."/>
+                                <ListBox x:Name="LogsList" Height="330" Margin="0,12,0,12" SelectionChanged="LogsList_SelectionChanged" ToolTip="Log kayıtlarını listeler. Ayrıntısını görmek için bir kayda tıklayın."/>
+                                <TextBox x:Name="LogDetailBox" Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" IsReadOnly="True" ToolTip="Seçili log kaydının ayrıntılı açıklaması burada görünür. Bu alan yalnızca okunur."/>
                                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                    <Button Content="Yenile" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshLogs_Click"/>
-                                    <Button Content="Logları Sil" Style="{StaticResource SecondaryButtonStyle}" Click="ClearLogs_Click"/>
+                                    <Button Content="Yenile" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshLogs_Click" ToolTip="Log dosyasını yeniden okur ve listedeki kayıtları günceller."/>
+                                    <Button Content="Logları Sil" Style="{StaticResource SecondaryButtonStyle}" Click="ClearLogs_Click" ToolTip="Tüm log kayıtlarını siler. Bu işlem geri alınamaz."/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
                     </StackPanel>
 
                     <StackPanel x:Name="SettingsPanel" Visibility="Collapsed">
-                        <Border Style="{StaticResource CardStyle}">
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Uygulamanın genel çalışma ayarları ve eski ayar içe aktarma bölümü.">
                             <StackPanel>
-                                <TextBlock Text="Genel ayarlar" FontSize="18" FontWeight="SemiBold"/>
-                                <TextBlock Text="Profil adı" Foreground="{StaticResource Muted}" Margin="0,14,0,0"/>
-                                <TextBox x:Name="ProfileNameBox"/>
-                                <CheckBox x:Name="ZipEnabledCheck" Content="ZIP formatında yedekle" Margin="0,14,0,8"/>
-                                <TextBlock Text="Eski yedekaldat.ini yolu" Foreground="{StaticResource Muted}" Margin="0,10,0,0"/>
+                                <TextBlock Text="Genel ayarlar" FontSize="18" FontWeight="SemiBold" ToolTip="Profil adı, ZIP seçimi ve eski INI içe aktarma ayarları."/>
+                                <TextBlock Text="Profil adı" Foreground="{StaticResource Muted}" Margin="0,14,0,0" ToolTip="Bu yedekleme ayar grubunu tanımlayan isim."/>
+                                <TextBox x:Name="ProfileNameBox" ToolTip="Yedek profilinin adını yazın. Bu ad loglarda ve bulut metadata bilgisinde kullanılabilir."/>
+                                <CheckBox x:Name="ZipEnabledCheck" Content="ZIP formatında yedekle" Margin="0,14,0,8" ToolTip="Açık olursa kaynaklar tek bir ZIP arşivi olarak yedeklenir."/>
+                                <TextBlock Text="Eski yedekaldat.ini yolu" Foreground="{StaticResource Muted}" Margin="0,10,0,0" ToolTip="Eski Delphi uygulamasının ini dosyasını içe aktarmak için dosya yolu."/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="ImportPathBox" Text="D:\yedek_kopya\yedekaldat.ini"/>
-                                    <Button Grid.Column="1" Content="İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportLegacy_Click" Margin="8,0,0,0"/>
+                                    <TextBox x:Name="ImportPathBox" Text="D:\yedek_kopya\yedekaldat.ini" ToolTip="Eski yedekaldat.ini dosyasının tam yolunu yazın. Bu dosyadan kaynak, hedef ve zamanlama ayarları okunur."/>
+                                    <Button Grid.Column="1" Content="İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportLegacy_Click" Margin="8,0,0,0" ToolTip="Yol kutusunda yazan eski ini dosyasını okuyup ayarları yeni uygulamaya taşır."/>
                                 </Grid>
-                                <TextBlock x:Name="SettingsPathText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,16,0,0"/>
+                                <TextBlock x:Name="SettingsPathText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,16,0,0" ToolTip="Ayar ve secret dosyalarının bilgisayardaki gerçek dosya yollarını gösterir."/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>
 
-            <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0">
+            <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" ToolTip="Alt durum çubuğu. Son işlem mesajı ve WhatsApp iletişim numarası burada görünür.">
                 <Grid Margin="24,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="1" Text="WhatsApp iletişim: 05300221838" VerticalAlignment="Center" Foreground="#128C4A" FontWeight="Bold" Margin="16,0,0,0"/>
-                    <TextBlock x:Name="StatusBarText" Text="Hazır" VerticalAlignment="Center" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Grid.Column="1" Text="WhatsApp iletişim: 05300221838" VerticalAlignment="Center" Foreground="#128C4A" FontWeight="Bold" Margin="16,0,0,0" ToolTip="Lisans veya destek için WhatsApp iletişim numarası."/>
+                    <TextBlock x:Name="StatusBarText" Text="Hazır" VerticalAlignment="Center" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis" ToolTip="Son işlem durumu ve kısa bilgilendirme mesajları burada görünür."/>
                 </Grid>
             </Border>
         </Grid>
