@@ -241,9 +241,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.2",
+              "version": "1.0.3",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.2.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.3.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -255,7 +255,7 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.2", "update version");
+    Assert(result.Manifest.Version == "1.0.3", "update version");
 }
 
 static Task TestRetention()
