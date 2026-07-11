@@ -1,0 +1,7 @@
+# Modern Yedek license list v1
+# Format:
+# SHA256_HASH|durationDays|status|note
+#
+# Example:
+# F00DBABE00000000000000000000000000000000000000000000000000000000|7|active|example
+

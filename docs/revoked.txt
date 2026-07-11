@@ -1,0 +1,3 @@
+# Modern Yedek revoked license hashes
+# One SHA256 hash per line.
+
