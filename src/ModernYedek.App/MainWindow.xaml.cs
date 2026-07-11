@@ -783,7 +783,9 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(_settings.License.ApiBaseUrl)
             || _settings.License.ApiBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase)
-            || _settings.License.ApiBaseUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+            || _settings.License.ApiBaseUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            || (_settings.License.ApiBaseUrl.Contains("serveousercontent.com", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(_settings.License.ApiBaseUrl.TrimEnd('/'), LicenseSettings.DefaultApiBaseUrl, StringComparison.OrdinalIgnoreCase)))
         {
             _settings.License.ApiBaseUrl = LicenseSettings.DefaultApiBaseUrl;
         }

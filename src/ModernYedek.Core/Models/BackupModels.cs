@@ -83,7 +83,7 @@ public sealed class MailSettings
 
 public sealed class LicenseSettings
 {
-    public const string DefaultApiBaseUrl = "https://349f91a2043dea99-182-92-64-210.serveousercontent.com";
+    public const string DefaultApiBaseUrl = "https://0b95d7d19975e1f8-112-126-72-180.serveousercontent.com";
 
     public bool Required { get; set; } = true;
     public string ApiBaseUrl { get; set; } = DefaultApiBaseUrl;
