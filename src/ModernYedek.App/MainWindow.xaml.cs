@@ -83,7 +83,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             StatusBarText.Text = "Ayarlar yüklenemedi.";
-            System.Windows.MessageBox.Show(ex.Message, "Modern Yedek", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowError(ex.Message, "Modern Yedek");
         }
     }
 
@@ -91,6 +91,7 @@ public partial class MainWindow : Window
     {
         if (sender is not WpfButton button || button.Tag is not string page)
         {
+            ShowWarning("Sayfa acilamadi. Lutfen menu dugmesini tekrar deneyin.");
             return;
         }
 
@@ -135,6 +136,38 @@ public partial class MainWindow : Window
 
         PageTitleText.Text = title;
         PageSubtitleText.Text = subtitle;
+        StatusBarText.Text = $"{title} sayfasi acildi.";
+    }
+
+    private void ShowInfo(string message, string title = "Bilgi")
+    {
+        ShowPopup(message, title, MessageBoxImage.Information);
+    }
+
+    private void ShowSuccess(string message, string title = "Basarili")
+    {
+        ShowPopup(message, title, MessageBoxImage.Information);
+    }
+
+    private void ShowWarning(string message, string title = "Uyari")
+    {
+        ShowPopup(message, title, MessageBoxImage.Warning);
+    }
+
+    private void ShowError(string message, string title = "Hata")
+    {
+        ShowPopup(message, title, MessageBoxImage.Error);
+    }
+
+    private bool ConfirmAction(string message, string title = "Onay")
+    {
+        return System.Windows.MessageBox.Show(this, message, title, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+    }
+
+    private void ShowPopup(string message, string title, MessageBoxImage image)
+    {
+        StatusBarText.Text = message;
+        System.Windows.MessageBox.Show(this, message, title, MessageBoxButton.OK, image);
     }
 
     private async void SaveSettings_Click(object sender, RoutedEventArgs e)
@@ -145,11 +178,11 @@ public partial class MainWindow : Window
             await _settingsService.SaveAsync(_settings);
             BindSettings();
             UpdateDashboard();
-            StatusBarText.Text = "Ayarlar kaydedildi.";
+            ShowSuccess("Ayarlar kaydedildi.");
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(ex.Message, "Ayar kaydetme hatası", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowError(ex.Message, "Ayar kaydetme hatasi");
         }
     }
 
@@ -161,6 +194,11 @@ public partial class MainWindow : Window
             if (dialog.ShowDialog(this) == true)
             {
                 SourcePathBox.Text = dialog.FileName;
+                ShowInfo($"Kaynak dosya secildi:{Environment.NewLine}{dialog.FileName}");
+            }
+            else
+            {
+                ShowInfo("Kaynak dosya secimi iptal edildi.");
             }
 
             return;
@@ -170,6 +208,11 @@ public partial class MainWindow : Window
         if (folderDialog.ShowDialog() == WinForms.DialogResult.OK)
         {
             SourcePathBox.Text = folderDialog.SelectedPath;
+            ShowInfo($"Kaynak klasor secildi:{Environment.NewLine}{folderDialog.SelectedPath}");
+        }
+        else
+        {
+            ShowInfo("Kaynak klasor secimi iptal edildi.");
         }
     }
 
@@ -178,7 +221,7 @@ public partial class MainWindow : Window
         var path = SourcePathBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(path))
         {
-            StatusBarText.Text = "Kaynak yolu boş.";
+            ShowWarning("Kaynak yolu bos. Once bir dosya veya klasor secin.");
             return;
         }
 
@@ -191,6 +234,7 @@ public partial class MainWindow : Window
         SourcePathBox.Clear();
         BindSettings();
         UpdateDashboard();
+        ShowSuccess($"Kaynak eklendi:{Environment.NewLine}{path}");
     }
 
     private void RemoveSource_Click(object sender, RoutedEventArgs e)
@@ -198,9 +242,21 @@ public partial class MainWindow : Window
         var index = SourcesList.SelectedIndex;
         if (index >= 0 && index < _settings.Sources.Count)
         {
+            var removed = _settings.Sources[index].Path;
+            if (!ConfirmAction($"Bu kaynak silinsin mi?{Environment.NewLine}{removed}"))
+            {
+                ShowInfo("Kaynak silme islemi iptal edildi.");
+                return;
+            }
+
             _settings.Sources.RemoveAt(index);
             BindSettings();
             UpdateDashboard();
+            ShowSuccess($"Kaynak silindi:{Environment.NewLine}{removed}");
+        }
+        else
+        {
+            ShowWarning("Silmek icin once listeden bir kaynak secin.");
         }
     }
 
@@ -210,6 +266,11 @@ public partial class MainWindow : Window
         if (folderDialog.ShowDialog() == WinForms.DialogResult.OK)
         {
             TargetPathBox.Text = folderDialog.SelectedPath;
+            ShowInfo($"Hedef klasor secildi:{Environment.NewLine}{folderDialog.SelectedPath}");
+        }
+        else
+        {
+            ShowInfo("Hedef klasor secimi iptal edildi.");
         }
     }
 
@@ -218,7 +279,7 @@ public partial class MainWindow : Window
         var path = TargetPathBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(path))
         {
-            StatusBarText.Text = "Hedef yolu boş.";
+            ShowWarning("Hedef yolu bos. Once bir hedef klasor secin.");
             return;
         }
 
@@ -226,6 +287,7 @@ public partial class MainWindow : Window
         TargetPathBox.Clear();
         BindSettings();
         UpdateDashboard();
+        ShowSuccess($"Hedef eklendi:{Environment.NewLine}{path}");
     }
 
     private void RemoveTarget_Click(object sender, RoutedEventArgs e)
@@ -233,9 +295,21 @@ public partial class MainWindow : Window
         var index = TargetsList.SelectedIndex;
         if (index >= 0 && index < _settings.Targets.Count)
         {
+            var removed = _settings.Targets[index].Path;
+            if (!ConfirmAction($"Bu hedef silinsin mi?{Environment.NewLine}{removed}"))
+            {
+                ShowInfo("Hedef silme islemi iptal edildi.");
+                return;
+            }
+
             _settings.Targets.RemoveAt(index);
             BindSettings();
             UpdateDashboard();
+            ShowSuccess($"Hedef silindi:{Environment.NewLine}{removed}");
+        }
+        else
+        {
+            ShowWarning("Silmek icin once listeden bir hedef secin.");
         }
     }
 
@@ -244,7 +318,7 @@ public partial class MainWindow : Window
         var time = NewTimeBox.Text.Trim();
         if (!ScheduleCalculator.IsValidTime(time))
         {
-            StatusBarText.Text = "Saat HH:mm formatında olmalı. Örnek: 18:00";
+            ShowWarning("Saat HH:mm formatinda olmali. Ornek: 18:00");
             return;
         }
 
@@ -252,19 +326,33 @@ public partial class MainWindow : Window
         {
             _settings.Schedule.Times.Add(time);
             _settings.Schedule.Times = _settings.Schedule.Times.OrderBy(value => value).ToList();
+            BindSettings();
+            UpdateDashboard();
+            ShowSuccess($"Zamanlama saati eklendi: {time}");
+            return;
         }
 
-        BindSettings();
-        UpdateDashboard();
+        ShowInfo($"Bu saat zaten listede var: {time}");
     }
 
     private void RemoveScheduleTime_Click(object sender, RoutedEventArgs e)
     {
         if (ScheduleTimesList.SelectedItem is string selected)
         {
+            if (!ConfirmAction($"Bu zamanlama saati silinsin mi? {selected}"))
+            {
+                ShowInfo("Saat silme islemi iptal edildi.");
+                return;
+            }
+
             _settings.Schedule.Times.Remove(selected);
             BindSettings();
             UpdateDashboard();
+            ShowSuccess($"Zamanlama saati silindi: {selected}");
+        }
+        else
+        {
+            ShowWarning("Silmek icin once listeden bir saat secin.");
         }
     }
 
@@ -285,11 +373,11 @@ public partial class MainWindow : Window
             await RefreshSecretStatusAsync();
             await RefreshLogsAsync();
             UpdateDashboard();
-            StatusBarText.Text = $"Eski ayarlar içe aktarıldı: {path}";
+            ShowSuccess($"Eski ayarlar ice aktarildi:{Environment.NewLine}{path}");
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(ex.Message, "İçe aktarma hatası", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowError(ex.Message, "Ice aktarma hatasi");
         }
     }
 
@@ -303,6 +391,7 @@ public partial class MainWindow : Window
 
         if (dialog.ShowDialog(this) != true)
         {
+            ShowInfo("Google service account JSON secimi iptal edildi.");
             return;
         }
 
@@ -312,11 +401,11 @@ public partial class MainWindow : Window
             _ = new GoogleCloudStorageClient(json);
             await _secretStore.SetSecretAsync(SecretKeys.GoogleServiceAccountJson, json);
             await RefreshSecretStatusAsync();
-            StatusBarText.Text = "Google service account key şifreli olarak kaydedildi.";
+            ShowSuccess("Google service account key sifreli olarak kaydedildi.");
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(ex.Message, "Google key hatası", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowError(ex.Message, "Google key hatasi");
         }
     }
 
@@ -328,7 +417,7 @@ public partial class MainWindow : Window
             var client = await CreateCloudClientAsync();
             if (client is null)
             {
-                StatusBarText.Text = "Google key veya bucket bilgisi eksik.";
+                ShowWarning("Google key, bucket bilgisi veya bulut yukleme ayari eksik. Bulut sayfasini kontrol edin.");
                 return;
             }
 
@@ -336,11 +425,20 @@ public partial class MainWindow : Window
             var result = await client.TestConnectionAsync(_settings.Cloud.BucketName);
             StatusBarText.Text = result.Message;
             GoogleKeyStatusText.Text = result.Message;
+            if (result.Success)
+            {
+                ShowSuccess(result.Message, "Bulut baglantisi basarili");
+            }
+            else
+            {
+                ShowWarning(result.Message, "Bulut baglantisi uyarisi");
+            }
         }
         catch (Exception ex)
         {
             StatusBarText.Text = "Bulut testi başarısız.";
             GoogleKeyStatusText.Text = ex.Message;
+            ShowError(ex.Message, "Bulut testi basarisiz");
         }
     }
 
@@ -352,7 +450,7 @@ public partial class MainWindow : Window
             var key = LicenseKeyBox.Text.Trim();
             if (string.IsNullOrWhiteSpace(key))
             {
-                StatusBarText.Text = "Lisans anahtari gerekli.";
+                ShowWarning("Lisans anahtari gerekli. Size verilen keyi girip tekrar deneyin.");
                 return;
             }
 
@@ -363,11 +461,20 @@ public partial class MainWindow : Window
             await _settingsService.SaveAsync(_settings);
             UpdateLicenseUi(result);
             StatusBarText.Text = result.Message;
+            if (result.IsValid)
+            {
+                ShowSuccess($"Lisans aktiflestirildi.{Environment.NewLine}{result.Message}");
+            }
+            else
+            {
+                ShowWarning($"Lisans aktiflestirilemedi.{Environment.NewLine}{result.Message}");
+            }
         }
         catch (Exception ex)
         {
             StatusBarText.Text = "Lisans aktiflestirme basarisiz.";
             LicenseDetailText.Text = ex.Message;
+            ShowError(ex.Message, "Lisans aktiflestirme basarisiz");
         }
     }
 
@@ -379,7 +486,7 @@ public partial class MainWindow : Window
             var key = LicenseKeyBox.Text.Trim();
             if (string.IsNullOrWhiteSpace(key))
             {
-                StatusBarText.Text = "Lisans anahtari gerekli.";
+                ShowWarning("Lisans anahtari gerekli. Size verilen keyi girip tekrar deneyin.");
                 return;
             }
 
@@ -388,11 +495,20 @@ public partial class MainWindow : Window
             await _settingsService.SaveAsync(_settings);
             UpdateLicenseUi(result);
             StatusBarText.Text = result.Message;
+            if (result.IsValid)
+            {
+                ShowSuccess($"Lisans dogrulandi.{Environment.NewLine}{result.Message}");
+            }
+            else
+            {
+                ShowWarning($"Lisans dogrulanamadi.{Environment.NewLine}{result.Message}");
+            }
         }
         catch (Exception ex)
         {
             StatusBarText.Text = "Lisans dogrulama basarisiz.";
             LicenseDetailText.Text = ex.Message;
+            ShowError(ex.Message, "Lisans dogrulama basarisiz");
         }
     }
 
@@ -406,11 +522,20 @@ public partial class MainWindow : Window
             StatusBarText.Text = response.IsSuccessStatusCode
                 ? "License API calisiyor."
                 : $"License API HTTP {(int)response.StatusCode}.";
+            if (response.IsSuccessStatusCode)
+            {
+                ShowSuccess("License API calisiyor.");
+            }
+            else
+            {
+                ShowWarning($"License API HTTP {(int)response.StatusCode} dondu.");
+            }
         }
         catch (Exception ex)
         {
             StatusBarText.Text = "License API ulasilamadi.";
             LicenseDetailText.Text = ex.Message;
+            ShowError(ex.Message, "License API ulasilamadi");
         }
     }
 
@@ -418,24 +543,33 @@ public partial class MainWindow : Window
     {
         try
         {
+            var savedAny = false;
             if (!string.IsNullOrWhiteSpace(MailPasswordBox.Password))
             {
                 await _secretStore.SetSecretAsync(SecretKeys.MailPassword, MailPasswordBox.Password);
                 MailPasswordBox.Clear();
+                savedAny = true;
             }
 
             if (!string.IsNullOrWhiteSpace(ZipPasswordBox.Password))
             {
                 await _secretStore.SetSecretAsync(SecretKeys.ZipPassword, ZipPasswordBox.Password);
                 ZipPasswordBox.Clear();
+                savedAny = true;
+            }
+
+            if (!savedAny)
+            {
+                ShowWarning("Kaydedilecek mail parolasi veya ZIP parola notu girilmedi.");
+                return;
             }
 
             await RefreshSecretStatusAsync();
-            StatusBarText.Text = "Secret bilgileri şifreli dosyaya kaydedildi.";
+            ShowSuccess("Secret bilgileri sifreli dosyaya kaydedildi.");
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(ex.Message, "Secret kaydetme hatası", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowError(ex.Message, "Secret kaydetme hatasi");
         }
     }
 
@@ -448,7 +582,7 @@ public partial class MainWindow : Window
     {
         if (_isRunning)
         {
-            StatusBarText.Text = "Zaten çalışan bir yedekleme var.";
+            ShowWarning("Zaten calisan bir yedekleme var. Mevcut islem bitmeden yeni yedek baslatilamaz.");
             return;
         }
 
@@ -457,6 +591,10 @@ public partial class MainWindow : Window
             _isRunning = true;
             DashboardStatusText.Text = "Çalışıyor";
             StatusBarText.Text = triggeredBySchedule ? "Zamanlanmış yedek başladı." : "Yedek başlatıldı.";
+            if (!triggeredBySchedule)
+            {
+                ShowInfo("Yedekleme baslatildi. Islem bitince sonuc bildirilecek.");
+            }
 
             CollectSettingsFromUi();
             await _settingsService.SaveAsync(_settings);
@@ -465,6 +603,10 @@ public partial class MainWindow : Window
                 DashboardStatusText.Text = "Lisans gerekli";
                 StatusBarText.Text = "Yedekleme icin aktif lisans gerekli.";
                 ShowPage(LicensePanel, "Lisans", "Haftalik lisans anahtarini aktiflestirin ve dogrulayin.");
+                if (!triggeredBySchedule)
+                {
+                    ShowWarning("Yedekleme icin aktif lisans gerekli. Lisans ekranindan key girip aktiflestirin.");
+                }
                 return;
             }
 
@@ -482,12 +624,29 @@ public partial class MainWindow : Window
 
             await RefreshLogsAsync();
             UpdateDashboard();
+            if (!triggeredBySchedule)
+            {
+                var message = result.ArchivePath is null
+                    ? $"Yedek tamamlandi: {result.Outcome}"
+                    : $"Yedek tamamlandi: {result.Outcome}{Environment.NewLine}{result.ArchivePath}";
+                if (result.Outcome == BackupOutcome.Success)
+                {
+                    ShowSuccess(message, "Yedekleme basarili");
+                }
+                else
+                {
+                    ShowWarning(message, "Yedekleme sonucu");
+                }
+            }
         }
         catch (Exception ex)
         {
             DashboardStatusText.Text = "Hata";
             StatusBarText.Text = ex.Message;
-            System.Windows.MessageBox.Show(ex.Message, "Yedekleme hatası", MessageBoxButton.OK, MessageBoxImage.Error);
+            if (!triggeredBySchedule)
+            {
+                ShowError(ex.Message, "Yedekleme hatasi");
+            }
         }
         finally
         {
@@ -614,14 +773,22 @@ public partial class MainWindow : Window
     {
         await RefreshLogsAsync();
         UpdateDashboard();
+        var count = LogsList.Items.Count;
+        ShowSuccess($"Loglar yenilendi. Gosterilen kayit sayisi: {count}");
     }
 
     private async void ClearLogs_Click(object sender, RoutedEventArgs e)
     {
+        if (!ConfirmAction("Tum log kayitlari silinsin mi? Bu islem geri alinamaz."))
+        {
+            ShowInfo("Log silme islemi iptal edildi.");
+            return;
+        }
+
         await _logger.ClearAsync();
         await RefreshLogsAsync();
         LogDetailBox.Clear();
-        StatusBarText.Text = "Loglar silindi.";
+        ShowSuccess("Loglar silindi.");
     }
 
     private void LogsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
