@@ -86,14 +86,28 @@ public sealed class LicenseSettings
     public const string DefaultApiBaseUrl = "https://0b95d7d19975e1f8-112-126-72-180.serveousercontent.com";
     public const string DefaultLicenseListUrl = "https://raw.githubusercontent.com/kul72107/haftaliklisanskaynak/main/docs/licenses.txt";
     public const string DefaultRevokedListUrl = "https://raw.githubusercontent.com/kul72107/haftaliklisanskaynak/main/docs/revoked.txt";
+    public const string DefaultActivationSignalUrl = "https://docs.google.com/forms/d/e/1FAIpQLSdOFrMtIMX3FBXRa0u7eTO00y1w-AYB8EKQ0qMzCQmmcP2oIQ/formResponse";
 
     public bool Required { get; set; } = true;
     public string ApiBaseUrl { get; set; } = DefaultApiBaseUrl;
     public string LicenseListUrl { get; set; } = DefaultLicenseListUrl;
     public string RevokedListUrl { get; set; } = DefaultRevokedListUrl;
-    public string ActivationSignalUrl { get; set; } = string.Empty;
-    public Dictionary<string, string> ActivationSignalFields { get; set; } = [];
+    public string ActivationSignalUrl { get; set; } = DefaultActivationSignalUrl;
+    public Dictionary<string, string> ActivationSignalFields { get; set; } = CreateDefaultActivationSignalFields();
     public string Email { get; set; } = string.Empty;
+
+    public static Dictionary<string, string> CreateDefaultActivationSignalFields()
+    {
+        return new Dictionary<string, string>
+        {
+            ["license_hash"] = "entry.1986987783",
+            ["machine_id"] = "entry.1100798267",
+            ["computer_name"] = "entry.2085233059",
+            ["activated_at"] = "entry.471081137",
+            ["app_version"] = "entry.1456895206",
+            ["note"] = "entry.1183096403"
+        };
+    }
 }
 
 public sealed class BackupLogEntry

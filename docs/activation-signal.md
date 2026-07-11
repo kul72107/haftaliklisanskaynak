@@ -15,14 +15,13 @@ Formda su kisa cevap alanlarini olustur:
 license_hash
 machine_id
 computer_name
-windows_user
 activated_at
-expires_at
-provider
 app_version
+note
 ```
 
-Formun `formResponse` URL'si ve her alanin `entry.xxxxx` id'si gerekir.
+Istege bagli olarak `windows_user`, `expires_at` ve `provider` alanlari da
+eklenebilir. Mevcut form temel aktivasyon sinyali icin yeterlidir.
 
 ## settings.json ornegi
 
@@ -40,16 +39,14 @@ Google Form bilgileri geldikten sonra `License` bolumu su sekilde doldurulur:
     "Required": true,
     "LicenseListUrl": "https://raw.githubusercontent.com/kul72107/haftaliklisanskaynak/main/docs/licenses.txt",
     "RevokedListUrl": "https://raw.githubusercontent.com/kul72107/haftaliklisanskaynak/main/docs/revoked.txt",
-    "ActivationSignalUrl": "https://docs.google.com/forms/d/e/FORM_ID/formResponse",
+    "ActivationSignalUrl": "https://docs.google.com/forms/d/e/1FAIpQLSdOFrMtIMX3FBXRa0u7eTO00y1w-AYB8EKQ0qMzCQmmcP2oIQ/formResponse",
     "ActivationSignalFields": {
-      "license_hash": "entry.111111111",
-      "machine_id": "entry.222222222",
-      "computer_name": "entry.333333333",
-      "windows_user": "entry.444444444",
-      "activated_at": "entry.555555555",
-      "expires_at": "entry.666666666",
-      "provider": "entry.777777777",
-      "app_version": "entry.888888888"
+      "license_hash": "entry.1986987783",
+      "machine_id": "entry.1100798267",
+      "computer_name": "entry.2085233059",
+      "activated_at": "entry.471081137",
+      "app_version": "entry.1456895206",
+      "note": "entry.1183096403"
     }
   }
 }
@@ -66,4 +63,3 @@ Gercek key Google Form'a gonderilmez. Sadece hash ve cihaz bilgisi gider.
 5. Uygulama lisansi bu bilgisayarda sifreli saklar.
 6. `ActivationSignalUrl` doluysa Google Form'a sinyal gonderir.
 7. Sen Google Sheet'te aktivasyonu gorunce `licenses.txt` satirini silebilirsin.
-

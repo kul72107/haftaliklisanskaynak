@@ -72,7 +72,9 @@ public sealed class SettingsService
                 Required = true,
                 ApiBaseUrl = LicenseSettings.DefaultApiBaseUrl,
                 LicenseListUrl = LicenseSettings.DefaultLicenseListUrl,
-                RevokedListUrl = LicenseSettings.DefaultRevokedListUrl
+                RevokedListUrl = LicenseSettings.DefaultRevokedListUrl,
+                ActivationSignalUrl = LicenseSettings.DefaultActivationSignalUrl,
+                ActivationSignalFields = LicenseSettings.CreateDefaultActivationSignalFields()
             }
         };
     }

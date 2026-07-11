@@ -55,6 +55,7 @@ public sealed class StaticLicenseClient
             ProductId = "modern-yedek",
             VariantId = durationDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Plan = $"manual_{durationDays}d",
+            Note = match.Note,
             PaidUntil = paidUntil,
             OfflineUntil = paidUntil,
             ActivationLimit = 1,

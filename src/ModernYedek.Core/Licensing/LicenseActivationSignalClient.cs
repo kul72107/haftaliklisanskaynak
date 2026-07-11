@@ -42,7 +42,8 @@ public sealed class LicenseActivationSignalClient
             ["activated_at"] = signal.ActivatedAt.ToString("O"),
             ["expires_at"] = signal.ExpiresAt?.ToString("O") ?? string.Empty,
             ["provider"] = signal.Provider,
-            ["app_version"] = signal.AppVersion
+            ["app_version"] = signal.AppVersion,
+            ["note"] = signal.Note
         };
 
         if (fieldMap.Count == 0)
@@ -73,4 +74,5 @@ public sealed class LicenseActivationSignal
     public DateTimeOffset? ExpiresAt { get; init; }
     public string Provider { get; init; } = string.Empty;
     public string AppVersion { get; init; } = string.Empty;
+    public string Note { get; init; } = string.Empty;
 }

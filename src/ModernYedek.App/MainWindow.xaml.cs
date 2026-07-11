@@ -739,6 +739,7 @@ public partial class MainWindow : Window
                 ProductId = cache.LastResult.ProductId,
                 VariantId = cache.LastResult.VariantId,
                 Plan = cache.LastResult.Plan,
+                Note = cache.LastResult.Note,
                 PaidUntil = cache.LastResult.PaidUntil,
                 OfflineUntil = cache.LastResult.OfflineUntil,
                 ActivationLimit = cache.LastResult.ActivationLimit,
@@ -774,7 +775,8 @@ public partial class MainWindow : Window
                 ActivatedAt = DateTimeOffset.UtcNow,
                 ExpiresAt = result.PaidUntil,
                 Provider = result.Provider,
-                AppVersion = typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "unknown"
+                AppVersion = typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "unknown",
+                Note = result.Note
             };
 
             _ = await new LicenseActivationSignalClient().SendAsync(_settings.License, signal);
@@ -1047,6 +1049,16 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(_settings.License.RevokedListUrl))
         {
             _settings.License.RevokedListUrl = LicenseSettings.DefaultRevokedListUrl;
+        }
+
+        if (string.IsNullOrWhiteSpace(_settings.License.ActivationSignalUrl))
+        {
+            _settings.License.ActivationSignalUrl = LicenseSettings.DefaultActivationSignalUrl;
+        }
+
+        if (_settings.License.ActivationSignalFields.Count == 0)
+        {
+            _settings.License.ActivationSignalFields = LicenseSettings.CreateDefaultActivationSignalFields();
         }
     }
 

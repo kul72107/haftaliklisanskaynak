@@ -38,6 +38,7 @@ public sealed class LicenseValidationResult
     public string ProductId { get; set; } = string.Empty;
     public string VariantId { get; set; } = string.Empty;
     public string Plan { get; set; } = "weekly_pro";
+    public string Note { get; set; } = string.Empty;
     public DateTimeOffset? PaidUntil { get; set; }
     public DateTimeOffset? OfflineUntil { get; set; }
     public int ActivationLimit { get; set; }
