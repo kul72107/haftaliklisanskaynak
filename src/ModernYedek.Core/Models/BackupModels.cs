@@ -34,6 +34,7 @@ public sealed class BackupSettings
     public MailSettings Mail { get; set; } = new();
     public LicenseSettings License { get; set; } = new();
     public UpdateSettings Update { get; set; } = new();
+    public AppBehaviorSettings AppBehavior { get; set; } = new();
 }
 
 public sealed class BackupSource
@@ -128,6 +129,11 @@ public sealed class UpdateSettings
 
     public bool Enabled { get; set; } = true;
     public string ManifestUrl { get; set; } = DefaultManifestUrl;
+}
+
+public sealed class AppBehaviorSettings
+{
+    public bool MinimizeToTrayOnClose { get; set; } = true;
 }
 
 public sealed class BackupLogEntry

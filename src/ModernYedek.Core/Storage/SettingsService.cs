@@ -82,6 +82,10 @@ public sealed class SettingsService
             {
                 Enabled = true,
                 ManifestUrl = UpdateSettings.DefaultManifestUrl
+            },
+            AppBehavior = new AppBehaviorSettings
+            {
+                MinimizeToTrayOnClose = true
             }
         };
     }

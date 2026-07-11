@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.Diagnostics;
 using System.IO;
@@ -35,9 +36,12 @@ public partial class MainWindow : Window
     private readonly JsonLinesBackupLogger _logger;
     private readonly DispatcherTimer _schedulerTimer;
     private readonly DispatcherTimer _revocationTimer;
+    private WinForms.NotifyIcon? _trayIcon;
     private BackupSettings _settings;
     private bool _isRunning;
     private bool _isRevocationCheckRunning;
+    private bool _isMovingToTray;
+    private bool _forceClose;
     private string? _lastScheduleFireKey;
 
     public MainWindow()
@@ -50,6 +54,7 @@ public partial class MainWindow : Window
         _licenseCacheService = new LicenseCacheService(_secretStore);
         _logger = new JsonLinesBackupLogger(_paths.LogFile);
         _settings = SettingsService.CreateDefault();
+        ConfigureTrayIcon();
 
         _schedulerTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
         _schedulerTimer.Tick += SchedulerTimer_Tick;
@@ -72,6 +77,7 @@ public partial class MainWindow : Window
             {
                 var import = new LegacyIniImporter().Import(ImportPathBox.Text);
                 _settings = import.Settings;
+                NormalizeAppBehaviorSettings();
                 if (!string.IsNullOrWhiteSpace(import.MailPassword))
                 {
                     await _secretStore.SetSecretAsync(SecretKeys.MailPassword, import.MailPassword);
@@ -86,6 +92,7 @@ public partial class MainWindow : Window
             }
 
             NormalizeLicenseSettings();
+            NormalizeAppBehaviorSettings();
             BindSettings();
             await RefreshSecretStatusAsync();
             await RefreshLicenseStatusAsync();
@@ -99,6 +106,135 @@ public partial class MainWindow : Window
             StatusBarText.Text = "Ayarlar yüklenemedi.";
             ShowError(ex.Message, "Modern Yedek");
         }
+    }
+
+    protected override void OnStateChanged(EventArgs e)
+    {
+        base.OnStateChanged(e);
+
+        if (!_isMovingToTray
+            && WindowState == WindowState.Minimized
+            && _settings.AppBehavior.MinimizeToTrayOnClose)
+        {
+            HideToTray(showBalloon: false);
+        }
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!_forceClose && _settings.AppBehavior.MinimizeToTrayOnClose)
+        {
+            e.Cancel = true;
+            HideToTray(showBalloon: true);
+            return;
+        }
+
+        DisposeTrayIcon();
+        base.OnClosing(e);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        DisposeTrayIcon();
+        base.OnClosed(e);
+    }
+
+    private void ConfigureTrayIcon()
+    {
+        if (_trayIcon is not null)
+        {
+            return;
+        }
+
+        var menu = new WinForms.ContextMenuStrip();
+        menu.Items.Add("Aç", null, (_, _) => Dispatcher.Invoke(RestoreFromTray));
+        menu.Items.Add("Şimdi Yedekle", null, (_, _) => Dispatcher.Invoke(() => _ = RunBackupAsync(triggeredBySchedule: false)));
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+        menu.Items.Add("Çıkış", null, (_, _) => Dispatcher.Invoke(ExitApplication));
+
+        _trayIcon = new WinForms.NotifyIcon
+        {
+            Icon = System.Drawing.SystemIcons.Application,
+            Text = "Modern Yedek - ResurrectSoft",
+            ContextMenuStrip = menu,
+            Visible = false
+        };
+        _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(RestoreFromTray);
+    }
+
+    private void HideToTray(bool showBalloon)
+    {
+        ConfigureTrayIcon();
+        if (_trayIcon is null)
+        {
+            return;
+        }
+
+        _isMovingToTray = true;
+        try
+        {
+            _trayIcon.Visible = true;
+            ShowInTaskbar = false;
+            WindowState = WindowState.Minimized;
+            Hide();
+        }
+        finally
+        {
+            _isMovingToTray = false;
+        }
+
+        StatusBarText.Text = "Uygulama sağ alt simge alanında arka planda çalışıyor.";
+        if (showBalloon)
+        {
+            _trayIcon.ShowBalloonTip(
+                3500,
+                "Modern Yedek",
+                "Uygulama kapanmadı; sağ alt simge alanında çalışmaya devam ediyor.",
+                WinForms.ToolTipIcon.Info);
+        }
+    }
+
+    private void RestoreFromTray()
+    {
+        ConfigureTrayIcon();
+
+        _isMovingToTray = true;
+        try
+        {
+            Show();
+            ShowInTaskbar = true;
+            WindowState = WindowState.Normal;
+            Activate();
+            if (_trayIcon is not null)
+            {
+                _trayIcon.Visible = false;
+            }
+        }
+        finally
+        {
+            _isMovingToTray = false;
+        }
+
+        StatusBarText.Text = "Uygulama yeniden açıldı.";
+    }
+
+    private void ExitApplication()
+    {
+        _forceClose = true;
+        DisposeTrayIcon();
+        System.Windows.Application.Current.Shutdown();
+    }
+
+    private void DisposeTrayIcon()
+    {
+        if (_trayIcon is null)
+        {
+            return;
+        }
+
+        _trayIcon.Visible = false;
+        _trayIcon.Dispose();
+        _trayIcon = null;
     }
 
     private async void RevocationTimer_Tick(object? sender, EventArgs e)
@@ -455,6 +591,7 @@ public partial class MainWindow : Window
             var path = ImportPathBox.Text.Trim();
             var import = new LegacyIniImporter().Import(path);
             _settings = import.Settings;
+            NormalizeAppBehaviorSettings();
             if (!string.IsNullOrWhiteSpace(import.MailPassword))
             {
                 await _secretStore.SetSecretAsync(SecretKeys.MailPassword, import.MailPassword);
@@ -1221,8 +1358,10 @@ public partial class MainWindow : Window
 
     private void BindSettings()
     {
+        NormalizeAppBehaviorSettings();
         ProfileNameBox.Text = _settings.ProfileName;
         ZipEnabledCheck.IsChecked = _settings.ZipEnabled;
+        MinimizeToTrayOnCloseCheck.IsChecked = _settings.AppBehavior.MinimizeToTrayOnClose;
 
         SourcesList.ItemsSource = _settings.Sources.Select(FormatSource).ToList();
         TargetsList.ItemsSource = _settings.Targets.Select(target => target.Path).ToList();
@@ -1252,8 +1391,10 @@ public partial class MainWindow : Window
 
     private void CollectSettingsFromUi()
     {
+        NormalizeAppBehaviorSettings();
         _settings.ProfileName = string.IsNullOrWhiteSpace(ProfileNameBox.Text) ? "Datasoft Yedek" : ProfileNameBox.Text.Trim();
         _settings.ZipEnabled = ZipEnabledCheck.IsChecked == true;
+        _settings.AppBehavior.MinimizeToTrayOnClose = MinimizeToTrayOnCloseCheck.IsChecked == true;
 
         _settings.Retention.Enabled = RetentionEnabledCheck.IsChecked == true;
         _settings.Retention.KeepDays = int.TryParse(KeepDaysBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var keepDays)
@@ -1443,6 +1584,7 @@ public partial class MainWindow : Window
 
         Process.Start(startInfo);
         ShowInfo("Guncelleyici baslatildi. Uygulama kapanacak ve guncellemeden sonra yeniden acilacak.", "Guncelleme");
+        _forceClose = true;
         System.Windows.Application.Current.Shutdown();
     }
 
@@ -1471,6 +1613,11 @@ public partial class MainWindow : Window
         {
             _settings.Update.ManifestUrl = UpdateSettings.DefaultManifestUrl;
         }
+    }
+
+    private void NormalizeAppBehaviorSettings()
+    {
+        _settings.AppBehavior ??= new AppBehaviorSettings();
     }
 
     private static Version GetCurrentVersion()

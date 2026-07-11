@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Modern Yedek - ResurrectSoft" Height="820" Width="1240" MinHeight="720" MinWidth="1100"
-        WindowStartupLocation="CenterScreen" Loaded="Window_Loaded">
+        WindowStartupLocation="CenterScreen" WindowStyle="SingleBorderWindow" ResizeMode="CanResize" ShowInTaskbar="True" Loaded="Window_Loaded">
     <Window.Resources>
         <SolidColorBrush x:Key="Ink" Color="#18202F"/>
         <SolidColorBrush x:Key="Muted" Color="#667085"/>
@@ -428,6 +428,7 @@
                                 <TextBlock Text="Profil adı" Foreground="{StaticResource Muted}" Margin="0,14,0,0" ToolTip="Bu yedekleme ayar grubunu tanımlayan isim."/>
                                 <TextBox x:Name="ProfileNameBox" ToolTip="Yedek profilinin adını yazın. Bu ad loglarda ve bulut metadata bilgisinde kullanılabilir."/>
                                 <CheckBox x:Name="ZipEnabledCheck" Content="ZIP formatında yedekle" Margin="0,14,0,8" ToolTip="Açık olursa kaynaklar tek bir ZIP arşivi olarak yedeklenir."/>
+                                <CheckBox x:Name="MinimizeToTrayOnCloseCheck" Content="Kapatınca veya küçültünce sağ alta al ve arka planda çalıştır" Margin="0,0,0,8" ToolTip="Açık olursa pencere kapatıldığında veya küçültüldüğünde uygulama kapanmaz; sağ alttaki sistem tepsisi simgesinden tekrar açılır. Varsayılan olarak açıktır."/>
                                 <TextBlock Text="Eski yedekaldat.ini yolu" Foreground="{StaticResource Muted}" Margin="0,10,0,0" ToolTip="Eski Delphi uygulamasının ini dosyasını içe aktarmak için dosya yolu."/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
