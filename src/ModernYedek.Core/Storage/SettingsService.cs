@@ -70,7 +70,9 @@ public sealed class SettingsService
             License = new LicenseSettings
             {
                 Required = true,
-                ApiBaseUrl = LicenseSettings.DefaultApiBaseUrl
+                ApiBaseUrl = LicenseSettings.DefaultApiBaseUrl,
+                LicenseListUrl = LicenseSettings.DefaultLicenseListUrl,
+                RevokedListUrl = LicenseSettings.DefaultRevokedListUrl
             }
         };
     }

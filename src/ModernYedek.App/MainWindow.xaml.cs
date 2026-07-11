@@ -455,8 +455,7 @@ public partial class MainWindow : Window
             }
 
             LicenseStateText.Text = "Lisans aktiflestiriliyor...";
-            var client = new LicenseClient(_settings.License.ApiBaseUrl);
-            var result = await client.ActivateAsync(key, _settings.License.Email, MachineIdentity.Current());
+            var result = await ActivateStaticLicenseAsync(key);
             await SaveLicenseResultAsync(key, result);
             await _settingsService.SaveAsync(_settings);
             UpdateLicenseUi(result);
@@ -707,17 +706,93 @@ public partial class MainWindow : Window
             }
 
             LicenseStateText.Text = "Lisans dogrulanamadi";
-            LicenseDetailText.Text = "License API ulasilamiyor ve offline izin suresi yok.";
+            LicenseDetailText.Text = "Lisans listesine ulasilamiyor ve yerel izin suresi yok.";
             return false;
         }
     }
 
     private async Task<LicenseValidationResult> ValidateLicenseOnlineAsync(string licenseKey)
     {
-        var client = new LicenseClient(_settings.License.ApiBaseUrl);
         var cache = await _licenseCacheService.LoadAsync();
-        var instanceId = cache?.LastResult.InstanceId ?? string.Empty;
-        return await client.ValidateAsync(licenseKey, _settings.License.Email, MachineIdentity.Current(), instanceId);
+        if (IsCachedLicenseUsableForKey(cache, licenseKey))
+        {
+            return cache!.LastResult;
+        }
+
+        return await ActivateStaticLicenseAsync(licenseKey);
+    }
+
+    private async Task<LicenseValidationResult> ActivateStaticLicenseAsync(string licenseKey)
+    {
+        var cache = await _licenseCacheService.LoadAsync();
+        if (IsCachedLicenseUsableForKey(cache, licenseKey))
+        {
+            return new LicenseValidationResult
+            {
+                IsValid = true,
+                State = cache!.LastResult.State,
+                Message = "Lisans bu bilgisayarda zaten aktif. Sure bitene kadar internet listesinden tekrar onay gerekmez.",
+                Provider = cache.LastResult.Provider,
+                LicenseId = cache.LastResult.LicenseId,
+                InstanceId = cache.LastResult.InstanceId,
+                CustomerEmail = cache.LastResult.CustomerEmail,
+                ProductId = cache.LastResult.ProductId,
+                VariantId = cache.LastResult.VariantId,
+                Plan = cache.LastResult.Plan,
+                PaidUntil = cache.LastResult.PaidUntil,
+                OfflineUntil = cache.LastResult.OfflineUntil,
+                ActivationLimit = cache.LastResult.ActivationLimit,
+                ActivationCount = cache.LastResult.ActivationCount
+            };
+        }
+
+        var client = new StaticLicenseClient();
+        var result = await client.ActivateAsync(licenseKey, _settings.License, MachineIdentity.Current());
+        if (result.IsValid)
+        {
+            await TrySendActivationSignalAsync(result);
+        }
+
+        return result;
+    }
+
+    private async Task TrySendActivationSignalAsync(LicenseValidationResult result)
+    {
+        if (string.IsNullOrWhiteSpace(_settings.License.ActivationSignalUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            var signal = new LicenseActivationSignal
+            {
+                LicenseHash = result.LicenseId,
+                MachineId = MachineIdentity.Current(),
+                ComputerName = Environment.MachineName,
+                WindowsUser = Environment.UserName,
+                ActivatedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = result.PaidUntil,
+                Provider = result.Provider,
+                AppVersion = typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "unknown"
+            };
+
+            _ = await new LicenseActivationSignalClient().SendAsync(_settings.License, signal);
+        }
+        catch
+        {
+            // Aktivasyon sinyali lisansin acilmasini engellemez.
+        }
+    }
+
+    private static bool IsCachedLicenseUsableForKey(LicenseCache? cache, string licenseKey)
+    {
+        if (!LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
+        {
+            return false;
+        }
+
+        return string.Equals(cache!.LicenseKey.Trim(), licenseKey.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task SaveLicenseResultAsync(string licenseKey, LicenseValidationResult result)
@@ -727,6 +802,7 @@ public partial class MainWindow : Window
             LicenseKey = licenseKey,
             Email = _settings.License.Email,
             ApiBaseUrl = _settings.License.ApiBaseUrl,
+            LicenseListUrl = _settings.License.LicenseListUrl,
             LastResult = result
         });
     }
@@ -745,6 +821,11 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(_settings.License.ApiBaseUrl))
         {
             _settings.License.ApiBaseUrl = cache.ApiBaseUrl;
+        }
+
+        if (string.IsNullOrWhiteSpace(_settings.License.LicenseListUrl))
+        {
+            _settings.License.LicenseListUrl = cache.LicenseListUrl;
         }
 
         LicenseRequiredCheck.IsChecked = _settings.License.Required;
@@ -958,6 +1039,15 @@ public partial class MainWindow : Window
         }
 
         _settings.License.Email = string.Empty;
+        if (string.IsNullOrWhiteSpace(_settings.License.LicenseListUrl))
+        {
+            _settings.License.LicenseListUrl = LicenseSettings.DefaultLicenseListUrl;
+        }
+
+        if (string.IsNullOrWhiteSpace(_settings.License.RevokedListUrl))
+        {
+            _settings.License.RevokedListUrl = LicenseSettings.DefaultRevokedListUrl;
+        }
     }
 
     private string GetDiskSummary()

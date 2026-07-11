@@ -49,6 +49,7 @@ public sealed class LicenseCache
     public string LicenseKey { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string ApiBaseUrl { get; set; } = string.Empty;
+    public string LicenseListUrl { get; set; } = string.Empty;
     public LicenseValidationResult LastResult { get; set; } = new();
     public DateTimeOffset CachedAt { get; set; } = DateTimeOffset.UtcNow;
 }

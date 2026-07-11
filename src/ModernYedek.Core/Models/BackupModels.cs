@@ -84,9 +84,15 @@ public sealed class MailSettings
 public sealed class LicenseSettings
 {
     public const string DefaultApiBaseUrl = "https://0b95d7d19975e1f8-112-126-72-180.serveousercontent.com";
+    public const string DefaultLicenseListUrl = "https://raw.githubusercontent.com/kul72107/haftaliklisanskaynak/main/docs/licenses.txt";
+    public const string DefaultRevokedListUrl = "https://raw.githubusercontent.com/kul72107/haftaliklisanskaynak/main/docs/revoked.txt";
 
     public bool Required { get; set; } = true;
     public string ApiBaseUrl { get; set; } = DefaultApiBaseUrl;
+    public string LicenseListUrl { get; set; } = DefaultLicenseListUrl;
+    public string RevokedListUrl { get; set; } = DefaultRevokedListUrl;
+    public string ActivationSignalUrl { get; set; } = string.Empty;
+    public Dictionary<string, string> ActivationSignalFields { get; set; } = [];
     public string Email { get; set; } = string.Empty;
 }
 

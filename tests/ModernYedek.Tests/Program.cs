@@ -12,6 +12,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Legacy INI import", TestLegacyIniImport),
     ("Backup ZIP, validation, SHA256, cloud mock", TestBackupEngine),
     ("DPAPI secret store", TestSecretStore),
+    ("Static TXT license activation", TestStaticTxtLicense),
     ("License cache offline window", TestLicenseCache),
     ("Retention deletes old archives", TestRetention)
 };
@@ -175,6 +176,31 @@ static async Task TestLicenseCache()
     Assert(LicenseCacheService.CanUseOffline(loaded, DateTimeOffset.UtcNow), "license cache usable offline");
 }
 
+static async Task TestStaticTxtLicense()
+{
+    var key = "MY-TXT-TEST-0001";
+    var hash = StaticLicenseClient.HashLicenseKey(key);
+    var listUrl = "https://license.test/licenses.txt";
+    var revokedUrl = "https://license.test/revoked.txt";
+    using var http = new HttpClient(new FakeLicenseHttpHandler(new Dictionary<string, string>
+    {
+        [listUrl] = $"{hash}|7|active|unit-test",
+        [revokedUrl] = ""
+    }));
+
+    var result = await new StaticLicenseClient(http).ActivateAsync(key, new LicenseSettings
+    {
+        LicenseListUrl = listUrl,
+        RevokedListUrl = revokedUrl
+    }, "machine-test");
+
+    Assert(result.IsValid, "static license valid");
+    Assert(result.Provider == "github-pages-txt", "static license provider");
+    Assert(result.LicenseId == hash, "static license hash");
+    Assert(result.PaidUntil is not null && result.PaidUntil.Value > DateTimeOffset.UtcNow.AddDays(6), "static license paid until");
+    Assert(result.OfflineUntil == result.PaidUntil, "static license offline until");
+}
+
 static Task TestRetention()
 {
     var root = CreateTempRoot();
@@ -233,5 +259,25 @@ sealed class FakeCloudStorageClient : ICloudStorageClient
             ObjectName = request.ObjectName,
             Message = "uploaded"
         });
+    }
+}
+
+sealed class FakeLicenseHttpHandler : HttpMessageHandler
+{
+    private readonly Dictionary<string, string> _responses;
+
+    public FakeLicenseHttpHandler(Dictionary<string, string> responses)
+    {
+        _responses = responses;
+    }
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var url = request.RequestUri?.ToString() ?? string.Empty;
+        var response = new HttpResponseMessage(_responses.ContainsKey(url) ? System.Net.HttpStatusCode.OK : System.Net.HttpStatusCode.NotFound)
+        {
+            Content = new StringContent(_responses.TryGetValue(url, out var body) ? body : string.Empty)
+        };
+        return Task.FromResult(response);
     }
 }
