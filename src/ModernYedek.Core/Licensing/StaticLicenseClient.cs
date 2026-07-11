@@ -22,7 +22,13 @@ public sealed class StaticLicenseClient
         var normalizedKey = NormalizeKey(licenseKey);
         var hash = HashLicenseKey(normalizedKey);
 
-        if (await IsRevokedAsync(hash, settings.RevokedListUrl, cancellationToken))
+        var revocation = await CheckRevocationAsync(hash, settings.RevokedListUrl, cancellationToken);
+        if (!revocation.Success)
+        {
+            return Invalid($"Iptal listesi kontrol edilemedi: {revocation.Message}", hash);
+        }
+
+        if (revocation.Success && revocation.IsRevoked)
         {
             return Invalid("Bu lisans iptal edilmis.", hash);
         }
@@ -70,6 +76,57 @@ public sealed class StaticLicenseClient
         return Convert.ToHexString(bytes);
     }
 
+    public async Task<RevocationCheckResult> CheckRevocationAsync(
+        string licenseHash,
+        string revokedListUrl,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(revokedListUrl))
+        {
+            return new RevocationCheckResult { Success = true, Message = "Iptal listesi kapali." };
+        }
+
+        try
+        {
+            var hash = licenseHash.Trim().ToUpperInvariant();
+            var text = await _httpClient.GetStringAsync(revokedListUrl, cancellationToken);
+            foreach (var rawLine in text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var line = rawLine.Trim();
+                if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (string.Equals(line, hash, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new RevocationCheckResult
+                    {
+                        Success = true,
+                        IsRevoked = true,
+                        Message = "Lisans iptal listesinde bulundu."
+                    };
+                }
+            }
+
+            return new RevocationCheckResult
+            {
+                Success = true,
+                IsRevoked = false,
+                Message = "Lisans iptal listesinde yok."
+            };
+        }
+        catch (Exception ex)
+        {
+            return new RevocationCheckResult
+            {
+                Success = false,
+                IsRevoked = false,
+                Message = ex.Message
+            };
+        }
+    }
+
     private async Task<List<StaticLicenseRecord>> LoadLicensesAsync(string url, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(url))
@@ -108,38 +165,6 @@ public sealed class StaticLicenseClient
         }
 
         return records;
-    }
-
-    private async Task<bool> IsRevokedAsync(string hash, string url, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            return false;
-        }
-
-        try
-        {
-            var text = await _httpClient.GetStringAsync(url, cancellationToken);
-            foreach (var rawLine in text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                var line = rawLine.Trim();
-                if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (string.Equals(line, hash, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-        }
-        catch
-        {
-            return false;
-        }
-
-        return false;
     }
 
     private static LicenseValidationResult Invalid(string message, string hash)

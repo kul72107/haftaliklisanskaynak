@@ -63,3 +63,19 @@ Gercek key Google Form'a gonderilmez. Sadece hash ve cihaz bilgisi gider.
 5. Uygulama lisansi bu bilgisayarda sifreli saklar.
 6. `ActivationSignalUrl` doluysa Google Form'a sinyal gonderir.
 7. Sen Google Sheet'te aktivasyonu gorunce `licenses.txt` satirini silebilirsin.
+
+## Lisans iptali
+
+Musterinin lisansini iptal etmek icin key hashini `docs/revoked.txt` dosyasina
+tek satir olarak ekle:
+
+```txt
+2FFE01326CA563CBD75833DAA2A0F27A49B231258DCC21AFE895A2D31D3D4A88
+```
+
+Uygulama acilista, `Dogrula` basildiginda ve yedekleme oncesinde bu dosyayi
+kontrol eder. Hash iptal listesindeyse lisans hemen kilitlenir.
+
+Internet yoksa son basarili iptal kontrolu 24 saat boyunca kabul edilir.
+24 saat gectikten sonra uygulama iptal listesini tekrar okuyana kadar yedekleme
+yaptirmaz.

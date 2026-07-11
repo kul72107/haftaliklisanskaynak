@@ -24,6 +24,7 @@ namespace ModernYedek.App;
 
 public partial class MainWindow : Window
 {
+    private static readonly TimeSpan RevocationCheckMaxAge = TimeSpan.FromHours(24);
     private readonly AppPaths _paths;
     private readonly SettingsService _settingsService;
     private readonly DpapiSecretStore _secretStore;
@@ -79,6 +80,7 @@ public partial class MainWindow : Window
             BindSettings();
             await RefreshSecretStatusAsync();
             await RefreshLicenseStatusAsync();
+            await EnforceRevocationPolicyOnStartupAsync();
             await RefreshLogsAsync();
             UpdateDashboard();
             await CheckForUpdatesOnStartupAsync();
@@ -677,6 +679,12 @@ public partial class MainWindow : Window
         var cache = await _licenseCacheService.LoadAsync();
         if (LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
         {
+            var revocation = await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup: false);
+            if (!revocation)
+            {
+                return false;
+            }
+
             UpdateLicenseUi(cache!.LastResult);
             return true;
         }
@@ -704,6 +712,12 @@ public partial class MainWindow : Window
             cache = await _licenseCacheService.LoadAsync();
             if (LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
             {
+                var revocation = await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup: false);
+                if (!revocation)
+                {
+                    return false;
+                }
+
                 UpdateLicenseUi(cache!.LastResult);
                 return true;
             }
@@ -719,6 +733,11 @@ public partial class MainWindow : Window
         var cache = await _licenseCacheService.LoadAsync();
         if (IsCachedLicenseUsableForKey(cache, licenseKey))
         {
+            if (!await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup: false))
+            {
+                return cache!.LastResult;
+            }
+
             return cache!.LastResult;
         }
 
@@ -730,6 +749,11 @@ public partial class MainWindow : Window
         var cache = await _licenseCacheService.LoadAsync();
         if (IsCachedLicenseUsableForKey(cache, licenseKey))
         {
+            if (!await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup: false))
+            {
+                return cache!.LastResult;
+            }
+
             return new LicenseValidationResult
             {
                 IsValid = true,
@@ -800,14 +824,92 @@ public partial class MainWindow : Window
         return string.Equals(cache!.LicenseKey.Trim(), licenseKey.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
+    private async Task EnforceRevocationPolicyOnStartupAsync()
+    {
+        var cache = await _licenseCacheService.LoadAsync();
+        if (!LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
+        {
+            return;
+        }
+
+        _ = await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup: true);
+    }
+
+    private async Task<bool> EnsureCachedLicenseNotRevokedAsync(LicenseCache cache, bool showPopup)
+    {
+        if (!cache.LastResult.IsValid)
+        {
+            return false;
+        }
+
+        var hash = !string.IsNullOrWhiteSpace(cache.LastResult.LicenseId)
+            ? cache.LastResult.LicenseId.Trim().ToUpperInvariant()
+            : StaticLicenseClient.HashLicenseKey(cache.LicenseKey);
+
+        var result = await new StaticLicenseClient().CheckRevocationAsync(hash, _settings.License.RevokedListUrl);
+        if (result.Success)
+        {
+            cache.LastRevocationCheckAt = DateTimeOffset.UtcNow;
+            cache.RevokedListUrl = _settings.License.RevokedListUrl;
+
+            if (result.IsRevoked)
+            {
+                cache.LastResult.IsValid = false;
+                cache.LastResult.State = LicenseState.Canceled;
+                cache.LastResult.Message = "Bu lisans iptal edildi. Destek ile iletisime gecin.";
+                cache.LastResult.OfflineUntil = DateTimeOffset.UtcNow;
+                await _licenseCacheService.SaveAsync(cache);
+                UpdateLicenseUi(cache.LastResult);
+                if (showPopup)
+                {
+                    ShowWarning(cache.LastResult.Message, "Lisans iptal edildi");
+                }
+
+                return false;
+            }
+
+            await _licenseCacheService.SaveAsync(cache);
+            return true;
+        }
+
+        if (cache.LastRevocationCheckAt is not null
+            && DateTimeOffset.UtcNow - cache.LastRevocationCheckAt.Value <= RevocationCheckMaxAge)
+        {
+            StatusBarText.Text = "Iptal listesi okunamadi, son kontrol 24 saatten yeni oldugu icin devam ediliyor.";
+            return true;
+        }
+
+        LicenseStateText.Text = "Lisans kontrolu gerekli";
+        LicenseDetailText.Text =
+            "Iptal listesi 24 saatten uzun suredir kontrol edilemedi. " +
+            "Lutfen internete baglanip lisansi tekrar dogrulayin.";
+        if (showPopup)
+        {
+            ShowWarning(LicenseDetailText.Text, "Lisans kontrolu gerekli");
+        }
+
+        return false;
+    }
+
     private async Task SaveLicenseResultAsync(string licenseKey, LicenseValidationResult result)
     {
+        var existing = await _licenseCacheService.LoadAsync();
+        var lastRevocationCheckAt = existing?.LastRevocationCheckAt;
+        if (result.IsValid
+            && string.Equals(result.Provider, "github-pages-txt", StringComparison.OrdinalIgnoreCase)
+            && result.Message.Contains("aktiflestirildi", StringComparison.OrdinalIgnoreCase))
+        {
+            lastRevocationCheckAt = DateTimeOffset.UtcNow;
+        }
+
         await _licenseCacheService.SaveAsync(new LicenseCache
         {
             LicenseKey = licenseKey,
             Email = _settings.License.Email,
             ApiBaseUrl = _settings.License.ApiBaseUrl,
             LicenseListUrl = _settings.License.LicenseListUrl,
+            RevokedListUrl = _settings.License.RevokedListUrl,
+            LastRevocationCheckAt = lastRevocationCheckAt,
             LastResult = result
         });
     }
@@ -831,6 +933,11 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(_settings.License.LicenseListUrl))
         {
             _settings.License.LicenseListUrl = cache.LicenseListUrl;
+        }
+
+        if (string.IsNullOrWhiteSpace(_settings.License.RevokedListUrl))
+        {
+            _settings.License.RevokedListUrl = cache.RevokedListUrl;
         }
 
         LicenseRequiredCheck.IsChecked = _settings.License.Required;

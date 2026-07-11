@@ -51,6 +51,15 @@ public sealed class LicenseCache
     public string Email { get; set; } = string.Empty;
     public string ApiBaseUrl { get; set; } = string.Empty;
     public string LicenseListUrl { get; set; } = string.Empty;
+    public string RevokedListUrl { get; set; } = string.Empty;
     public LicenseValidationResult LastResult { get; set; } = new();
     public DateTimeOffset CachedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? LastRevocationCheckAt { get; set; }
+}
+
+public sealed class RevocationCheckResult
+{
+    public bool Success { get; init; }
+    public bool IsRevoked { get; init; }
+    public string Message { get; init; } = string.Empty;
 }

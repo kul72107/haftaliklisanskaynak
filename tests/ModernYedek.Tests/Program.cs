@@ -14,6 +14,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Backup ZIP, validation, SHA256, cloud mock", TestBackupEngine),
     ("DPAPI secret store", TestSecretStore),
     ("Static TXT license activation", TestStaticTxtLicense),
+    ("Static TXT license revocation", TestStaticTxtRevocation),
     ("Update manifest version check", TestUpdateManifest),
     ("License cache offline window", TestLicenseCache),
     ("Retention deletes old archives", TestRetention)
@@ -201,6 +202,32 @@ static async Task TestStaticTxtLicense()
     Assert(result.LicenseId == hash, "static license hash");
     Assert(result.PaidUntil is not null && result.PaidUntil.Value > DateTimeOffset.UtcNow.AddDays(6), "static license paid until");
     Assert(result.OfflineUntil == result.PaidUntil, "static license offline until");
+}
+
+static async Task TestStaticTxtRevocation()
+{
+    var key = "MY-TXT-REVOKED-0001";
+    var hash = StaticLicenseClient.HashLicenseKey(key);
+    var listUrl = "https://license.test/licenses.txt";
+    var revokedUrl = "https://license.test/revoked.txt";
+    using var http = new HttpClient(new FakeLicenseHttpHandler(new Dictionary<string, string>
+    {
+        [listUrl] = $"{hash}|7|active|unit-test",
+        [revokedUrl] = hash
+    }));
+
+    var client = new StaticLicenseClient(http);
+    var revocation = await client.CheckRevocationAsync(hash, revokedUrl);
+    var activation = await client.ActivateAsync(key, new LicenseSettings
+    {
+        LicenseListUrl = listUrl,
+        RevokedListUrl = revokedUrl
+    }, "machine-test");
+
+    Assert(revocation.Success, "revocation check success");
+    Assert(revocation.IsRevoked, "revocation found");
+    Assert(!activation.IsValid, "revoked activation blocked");
+    Assert(activation.State == LicenseState.Invalid, "revoked activation invalid");
 }
 
 static async Task TestUpdateManifest()

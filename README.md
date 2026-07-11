@@ -67,6 +67,10 @@ Akis:
 8. Aktivasyon sinyali ayarlandiysa uygulama Google Form gibi bir endpoint'e hash ve cihaz bilgisini gonderir.
 9. Aktivasyonu gordukten sonra hash satiri `licenses.txt` dosyasindan silinebilir; aktif cihaz sure bitene kadar calismaya devam eder.
 
+Lisans iptali icin hash degeri `docs/revoked.txt` dosyasina eklenir. Uygulama
+acilista ve yedekleme oncesi iptal listesini kontrol eder. Son basarili iptal
+kontrolu 24 saati gectiyse yedekleme internet baglantisi gelene kadar kilitlenir.
+
 License API calistirma:
 
 ```powershell
