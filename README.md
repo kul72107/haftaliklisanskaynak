@@ -45,6 +45,12 @@ dotnet build D:\BITCH\ModernYedek\ModernYedek.sln
 dotnet run --project D:\BITCH\ModernYedek\tests\ModernYedek.Tests\ModernYedek.Tests.csproj
 ```
 
+## Guncelleme
+
+Uygulama acilista update manifest dosyasini kontrol eder. Zorunlu update varsa
+ZIP paketini indirir, SHA256 ile dogrular ve `ModernYedek.Updater.exe` ile
+kendini gunceller. Detaylar: `docs/update-system.md`.
+
 ## Manuel lisans sistemi
 
 Bu surum odeme saglayicisina bagli degildir. Keyleri siz uretirsiniz, musterinin uygulamaya girdigi key ilk aktivasyonda o bilgisayara baglanir. `activationLimit=1` oldugunda key baska bilgisayarda kullanilamaz.

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Windows;
@@ -14,6 +15,7 @@ using ModernYedek.Core.Models;
 using ModernYedek.Core.Scheduling;
 using ModernYedek.Core.Security;
 using ModernYedek.Core.Storage;
+using ModernYedek.Core.Updates;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using WpfButton = System.Windows.Controls.Button;
 using WinForms = System.Windows.Forms;
@@ -79,6 +81,7 @@ public partial class MainWindow : Window
             await RefreshLicenseStatusAsync();
             await RefreshLogsAsync();
             UpdateDashboard();
+            await CheckForUpdatesOnStartupAsync();
         }
         catch (Exception ex)
         {
@@ -984,6 +987,7 @@ public partial class MainWindow : Window
 
         _settings.License.Required = LicenseRequiredCheck.IsChecked == true;
         NormalizeLicenseSettings();
+        NormalizeUpdateSettings();
     }
 
     private List<DayOfWeek> ReadSelectedDays()
@@ -1060,6 +1064,128 @@ public partial class MainWindow : Window
         {
             _settings.License.ActivationSignalFields = LicenseSettings.CreateDefaultActivationSignalFields();
         }
+    }
+
+    private async Task CheckForUpdatesOnStartupAsync()
+    {
+        NormalizeUpdateSettings();
+        if (!_settings.Update.Enabled)
+        {
+            return;
+        }
+
+        try
+        {
+            StatusBarText.Text = "Guncelleme kontrol ediliyor...";
+            var currentVersion = GetCurrentVersion();
+            var result = await new UpdateClient().CheckAsync(_settings.Update.ManifestUrl, currentVersion);
+            if (!result.HasUpdate || result.Manifest is null)
+            {
+                StatusBarText.Text = result.Message;
+                return;
+            }
+
+            var manifest = result.Manifest;
+            var message =
+                $"Yeni surum bulundu: {manifest.Version}{Environment.NewLine}" +
+                $"Mevcut surum: {currentVersion}{Environment.NewLine}" +
+                $"{manifest.Notes}".Trim();
+
+            if (manifest.Mandatory)
+            {
+                ShowWarning($"{message}{Environment.NewLine}{Environment.NewLine}Bu guncelleme zorunlu. Uygulama simdi guncellenecek.", "Zorunlu guncelleme");
+                await DownloadAndStartUpdaterAsync(manifest);
+                return;
+            }
+
+            if (ConfirmAction($"{message}{Environment.NewLine}{Environment.NewLine}Simdi guncellemek ister misiniz?", "Guncelleme var"))
+            {
+                await DownloadAndStartUpdaterAsync(manifest);
+            }
+            else
+            {
+                StatusBarText.Text = "Guncelleme ertelendi.";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusBarText.Text = "Guncelleme kontrol edilemedi.";
+            ShowWarning($"Guncelleme kontrol edilemedi:{Environment.NewLine}{ex.Message}", "Guncelleme uyarisi");
+        }
+    }
+
+    private async Task DownloadAndStartUpdaterAsync(UpdateManifest manifest)
+    {
+        var updatesDirectory = Path.Combine(Path.GetTempPath(), "ModernYedekUpdates");
+        var progress = new Progress<double>(value =>
+        {
+            StatusBarText.Text = $"Guncelleme indiriliyor: {value:P0}";
+        });
+
+        var client = new UpdateClient();
+        var zipPath = await client.DownloadAndVerifyAsync(manifest, updatesDirectory, progress);
+        var updaterExe = PrepareUpdaterExecutable();
+        var appDirectory = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var appExe = Environment.ProcessPath ?? Path.Combine(appDirectory, "ModernYedek.App.exe");
+        var processId = Environment.ProcessId.ToString(CultureInfo.InvariantCulture);
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = updaterExe,
+            WorkingDirectory = Path.GetDirectoryName(updaterExe),
+            UseShellExecute = true
+        };
+        startInfo.ArgumentList.Add("--pid");
+        startInfo.ArgumentList.Add(processId);
+        startInfo.ArgumentList.Add("--zip");
+        startInfo.ArgumentList.Add(zipPath);
+        startInfo.ArgumentList.Add("--target");
+        startInfo.ArgumentList.Add(appDirectory);
+        startInfo.ArgumentList.Add("--exe");
+        startInfo.ArgumentList.Add(appExe);
+
+        Process.Start(startInfo);
+        ShowInfo("Guncelleyici baslatildi. Uygulama kapanacak ve guncellemeden sonra yeniden acilacak.", "Guncelleme");
+        System.Windows.Application.Current.Shutdown();
+    }
+
+    private static string PrepareUpdaterExecutable()
+    {
+        var sourceDirectory = AppContext.BaseDirectory;
+        var sourceExe = Path.Combine(sourceDirectory, "ModernYedek.Updater.exe");
+        if (!File.Exists(sourceExe))
+        {
+            throw new FileNotFoundException("ModernYedek.Updater.exe publish klasorunde bulunamadi.", sourceExe);
+        }
+
+        var targetDirectory = Path.Combine(Path.GetTempPath(), "ModernYedekUpdater", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(targetDirectory);
+        foreach (var file in Directory.EnumerateFiles(sourceDirectory, "ModernYedek.Updater*"))
+        {
+            File.Copy(file, Path.Combine(targetDirectory, Path.GetFileName(file)), overwrite: true);
+        }
+
+        return Path.Combine(targetDirectory, "ModernYedek.Updater.exe");
+    }
+
+    private void NormalizeUpdateSettings()
+    {
+        if (string.IsNullOrWhiteSpace(_settings.Update.ManifestUrl))
+        {
+            _settings.Update.ManifestUrl = UpdateSettings.DefaultManifestUrl;
+        }
+    }
+
+    private static Version GetCurrentVersion()
+    {
+        var version = typeof(MainWindow).Assembly.GetName().Version;
+        return version is null
+            ? new Version(1, 0, 0, 0)
+            : new Version(
+                Math.Max(0, version.Major),
+                Math.Max(0, version.Minor),
+                Math.Max(0, version.Build),
+                Math.Max(0, version.Revision));
     }
 
     private string GetDiskSummary()

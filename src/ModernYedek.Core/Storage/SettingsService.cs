@@ -75,6 +75,11 @@ public sealed class SettingsService
                 RevokedListUrl = LicenseSettings.DefaultRevokedListUrl,
                 ActivationSignalUrl = LicenseSettings.DefaultActivationSignalUrl,
                 ActivationSignalFields = LicenseSettings.CreateDefaultActivationSignalFields()
+            },
+            Update = new UpdateSettings
+            {
+                Enabled = true,
+                ManifestUrl = UpdateSettings.DefaultManifestUrl
             }
         };
     }

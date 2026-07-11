@@ -11,6 +11,24 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
+
+  <Target Name="PublishUpdater" AfterTargets="Publish">
+    <PropertyGroup>
+      <UpdaterPublishDir>$(MSBuildProjectDirectory)\..\ModernYedek.Updater\obj\updater-publish\</UpdaterPublishDir>
+    </PropertyGroup>
+    <MSBuild Projects="..\ModernYedek.Updater\ModernYedek.Updater.csproj"
+             Targets="Publish"
+             Properties="Configuration=$(Configuration);PublishDir=$(UpdaterPublishDir);SelfContained=false" />
+    <ItemGroup>
+      <UpdaterPublishFiles Include="$(UpdaterPublishDir)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(UpdaterPublishFiles)"
+          DestinationFiles="@(UpdaterPublishFiles->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

@@ -6,6 +6,7 @@ using ModernYedek.Core.Licensing;
 using ModernYedek.Core.Models;
 using ModernYedek.Core.Security;
 using ModernYedek.Core.Storage;
+using ModernYedek.Core.Updates;
 
 var tests = new (string Name, Func<Task> Run)[]
 {
@@ -13,6 +14,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Backup ZIP, validation, SHA256, cloud mock", TestBackupEngine),
     ("DPAPI secret store", TestSecretStore),
     ("Static TXT license activation", TestStaticTxtLicense),
+    ("Update manifest version check", TestUpdateManifest),
     ("License cache offline window", TestLicenseCache),
     ("Retention deletes old archives", TestRetention)
 };
@@ -199,6 +201,30 @@ static async Task TestStaticTxtLicense()
     Assert(result.LicenseId == hash, "static license hash");
     Assert(result.PaidUntil is not null && result.PaidUntil.Value > DateTimeOffset.UtcNow.AddDays(6), "static license paid until");
     Assert(result.OfflineUntil == result.PaidUntil, "static license offline until");
+}
+
+static async Task TestUpdateManifest()
+{
+    var manifestUrl = "https://updates.test/latest.json";
+    using var http = new HttpClient(new FakeLicenseHttpHandler(new Dictionary<string, string>
+    {
+        [manifestUrl] = """
+            {
+              "version": "1.0.1",
+              "mandatory": true,
+              "url": "https://updates.test/releases/ModernYedek-1.0.1.zip",
+              "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "notes": "unit test"
+            }
+            """
+    }));
+
+    var result = await new UpdateClient(http).CheckAsync(manifestUrl, new Version(1, 0, 0, 0));
+
+    Assert(result.HasUpdate, "update available");
+    Assert(result.Manifest is not null, "update manifest");
+    Assert(result.Manifest!.Mandatory, "update mandatory");
+    Assert(result.Manifest.Version == "1.0.1", "update version");
 }
 
 static Task TestRetention()

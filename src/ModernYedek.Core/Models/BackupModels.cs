@@ -33,6 +33,7 @@ public sealed class BackupSettings
     public CloudSettings Cloud { get; set; } = new();
     public MailSettings Mail { get; set; } = new();
     public LicenseSettings License { get; set; } = new();
+    public UpdateSettings Update { get; set; } = new();
 }
 
 public sealed class BackupSource
@@ -108,6 +109,14 @@ public sealed class LicenseSettings
             ["note"] = "entry.1183096403"
         };
     }
+}
+
+public sealed class UpdateSettings
+{
+    public const string DefaultManifestUrl = "https://raw.githubusercontent.com/kul72107/Yedek-app/main/latest.json";
+
+    public bool Enabled { get; set; } = true;
+    public string ManifestUrl { get; set; } = DefaultManifestUrl;
 }
 
 public sealed class BackupLogEntry
