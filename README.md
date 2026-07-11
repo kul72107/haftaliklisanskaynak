@@ -67,6 +67,19 @@ $env:MODERN_YEDEK_LICENSE_SALT="degistirilecek-lisans-salt"
 dotnet run --project D:\BITCH\ModernYedek\src\ModernYedek.LicenseApi\ModernYedek.LicenseApi.csproj
 ```
 
+Node.js ile deploy edilecek alternatif API:
+
+```bash
+cd node-license-api
+MODERN_YEDEK_ADMIN_TOKEN="degistirilecek-admin-token" \
+MODERN_YEDEK_LICENSE_SALT="degistirilecek-lisans-salt" \
+MODERN_YEDEK_LICENSE_DB="./data/licenses.json" \
+PORT="5088" \
+npm start
+```
+
+Node surumu `.NET` API ile ayni endpointleri sunar ve WPF uygulamada ekstra degisiklik gerektirmez. Public URL hazir olunca uygulamadaki `Lisans > License API URL` alanina o base URL yazilir.
+
 Telefondan key uretme paneli:
 
 ```text

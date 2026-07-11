@@ -14,3 +14,6 @@ lemon-webhooks.jsonl
 secrets.dat
 logs.jsonl
 settings.json
+node_modules/
+node-license-api/data/
+*.local
