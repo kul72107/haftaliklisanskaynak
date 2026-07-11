@@ -177,6 +177,10 @@ static async Task TestLicenseCache()
     Assert(loaded!.Email == "test@example.com", "license cache email");
     Assert(loaded.LastResult.InstanceId == "inst_test", "license cache instance");
     Assert(LicenseCacheService.CanUseOffline(loaded, DateTimeOffset.UtcNow), "license cache usable offline");
+
+    await cache.ClearAsync();
+    loaded = await cache.LoadAsync();
+    Assert(loaded is null, "license cache cleared");
 }
 
 static async Task TestStaticTxtLicense()
@@ -237,9 +241,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.1",
+              "version": "1.0.2",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.1.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.2.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -251,7 +255,7 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.1", "update version");
+    Assert(result.Manifest.Version == "1.0.2", "update version");
 }
 
 static Task TestRetention()

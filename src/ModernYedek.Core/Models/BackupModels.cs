@@ -88,6 +88,7 @@ public sealed class LicenseSettings
     public const string DefaultLicenseListUrl = "https://raw.githubusercontent.com/kul72107/haftaliklisanskaynak/main/docs/licenses.txt";
     public const string DefaultRevokedListUrl = "https://raw.githubusercontent.com/kul72107/haftaliklisanskaynak/main/docs/revoked.txt";
     public const string DefaultActivationSignalUrl = "https://docs.google.com/forms/d/e/1FAIpQLSdOFrMtIMX3FBXRa0u7eTO00y1w-AYB8EKQ0qMzCQmmcP2oIQ/formResponse";
+    public const string DefaultRevocationSignalUrl = "https://docs.google.com/forms/d/e/1FAIpQLSe3il0zE3oByaC951UydsfRrPmqic6fMYhsug5rSOBgd0uFug/formResponse";
 
     public bool Required { get; set; } = true;
     public string ApiBaseUrl { get; set; } = DefaultApiBaseUrl;
@@ -95,6 +96,8 @@ public sealed class LicenseSettings
     public string RevokedListUrl { get; set; } = DefaultRevokedListUrl;
     public string ActivationSignalUrl { get; set; } = DefaultActivationSignalUrl;
     public Dictionary<string, string> ActivationSignalFields { get; set; } = CreateDefaultActivationSignalFields();
+    public string RevocationSignalUrl { get; set; } = DefaultRevocationSignalUrl;
+    public Dictionary<string, string> RevocationSignalFields { get; set; } = CreateDefaultRevocationSignalFields();
     public string Email { get; set; } = string.Empty;
 
     public static Dictionary<string, string> CreateDefaultActivationSignalFields()
@@ -107,6 +110,14 @@ public sealed class LicenseSettings
             ["activated_at"] = "entry.471081137",
             ["app_version"] = "entry.1456895206",
             ["note"] = "entry.1183096403"
+        };
+    }
+
+    public static Dictionary<string, string> CreateDefaultRevocationSignalFields()
+    {
+        return new Dictionary<string, string>
+        {
+            ["revoked"] = "entry.1223292050"
         };
     }
 }

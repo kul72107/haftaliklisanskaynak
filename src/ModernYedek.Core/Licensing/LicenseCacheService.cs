@@ -39,6 +39,11 @@ public sealed class LicenseCacheService
         await _secretStore.SetSecretAsync(CacheKey, json, cancellationToken);
     }
 
+    public Task ClearAsync(CancellationToken cancellationToken = default)
+    {
+        return _secretStore.SetSecretAsync(CacheKey, null, cancellationToken);
+    }
+
     public static bool CanUseOffline(LicenseCache? cache, DateTimeOffset now)
     {
         if (cache?.LastResult is null || !cache.LastResult.IsValid)

@@ -31,8 +31,10 @@ public partial class MainWindow : Window
     private readonly LicenseCacheService _licenseCacheService;
     private readonly JsonLinesBackupLogger _logger;
     private readonly DispatcherTimer _schedulerTimer;
+    private readonly DispatcherTimer _revocationTimer;
     private BackupSettings _settings;
     private bool _isRunning;
+    private bool _isRevocationCheckRunning;
     private string? _lastScheduleFireKey;
 
     public MainWindow()
@@ -49,6 +51,10 @@ public partial class MainWindow : Window
         _schedulerTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
         _schedulerTimer.Tick += SchedulerTimer_Tick;
         _schedulerTimer.Start();
+
+        _revocationTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(1) };
+        _revocationTimer.Tick += RevocationTimer_Tick;
+        _revocationTimer.Start();
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -80,7 +86,7 @@ public partial class MainWindow : Window
             BindSettings();
             await RefreshSecretStatusAsync();
             await RefreshLicenseStatusAsync();
-            await EnforceRevocationPolicyOnStartupAsync();
+            await EnforceRevocationPolicyAsync(showPopup: true);
             await RefreshLogsAsync();
             UpdateDashboard();
             await CheckForUpdatesOnStartupAsync();
@@ -89,6 +95,24 @@ public partial class MainWindow : Window
         {
             StatusBarText.Text = "Ayarlar yüklenemedi.";
             ShowError(ex.Message, "Modern Yedek");
+        }
+    }
+
+    private async void RevocationTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_isRevocationCheckRunning)
+        {
+            return;
+        }
+
+        try
+        {
+            _isRevocationCheckRunning = true;
+            await EnforceRevocationPolicyAsync(showPopup: true);
+        }
+        finally
+        {
+            _isRevocationCheckRunning = false;
         }
     }
 
@@ -814,6 +838,35 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task TrySendRevocationSignalAsync(string licenseHash, string note)
+    {
+        if (string.IsNullOrWhiteSpace(_settings.License.RevocationSignalUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            var signal = new LicenseRevocationSignal
+            {
+                Revoked = true,
+                LicenseHash = licenseHash,
+                MachineId = MachineIdentity.Current(),
+                ComputerName = Environment.MachineName,
+                WindowsUser = Environment.UserName,
+                RevokedAt = DateTimeOffset.UtcNow,
+                AppVersion = typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "unknown",
+                Note = note
+            };
+
+            _ = await new LicenseRevocationSignalClient().SendAsync(_settings.License, signal);
+        }
+        catch
+        {
+            // Iptal sinyali yerel lisans imhasini engellemez.
+        }
+    }
+
     private static bool IsCachedLicenseUsableForKey(LicenseCache? cache, string licenseKey)
     {
         if (!LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
@@ -824,7 +877,7 @@ public partial class MainWindow : Window
         return string.Equals(cache!.LicenseKey.Trim(), licenseKey.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
-    private async Task EnforceRevocationPolicyOnStartupAsync()
+    private async Task EnforceRevocationPolicyAsync(bool showPopup)
     {
         var cache = await _licenseCacheService.LoadAsync();
         if (!LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
@@ -832,7 +885,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _ = await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup: true);
+        _ = await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup);
     }
 
     private async Task<bool> EnsureCachedLicenseNotRevokedAsync(LicenseCache cache, bool showPopup)
@@ -854,15 +907,13 @@ public partial class MainWindow : Window
 
             if (result.IsRevoked)
             {
-                cache.LastResult.IsValid = false;
-                cache.LastResult.State = LicenseState.Canceled;
-                cache.LastResult.Message = "Bu lisans iptal edildi. Destek ile iletisime gecin.";
-                cache.LastResult.OfflineUntil = DateTimeOffset.UtcNow;
-                await _licenseCacheService.SaveAsync(cache);
-                UpdateLicenseUi(cache.LastResult);
+                var message = "Bu lisans iptal edildi. Yerel lisans kaydi silindi; tekrar kullanmak icin yeni key gerekir.";
+                await TrySendRevocationSignalAsync(hash, cache.LastResult.Note);
+                await _licenseCacheService.ClearAsync();
+                ClearLocalLicenseUi(message);
                 if (showPopup)
                 {
-                    ShowWarning(cache.LastResult.Message, "Lisans iptal edildi");
+                    ShowWarning(message, "Lisans iptal edildi");
                 }
 
                 return false;
@@ -893,6 +944,16 @@ public partial class MainWindow : Window
 
     private async Task SaveLicenseResultAsync(string licenseKey, LicenseValidationResult result)
     {
+        if (IsRevokedLicenseResult(result))
+        {
+            var hash = !string.IsNullOrWhiteSpace(result.LicenseId)
+                ? result.LicenseId
+                : StaticLicenseClient.HashLicenseKey(licenseKey);
+            await TrySendRevocationSignalAsync(hash, result.Note);
+            await _licenseCacheService.ClearAsync();
+            return;
+        }
+
         var existing = await _licenseCacheService.LoadAsync();
         var lastRevocationCheckAt = existing?.LastRevocationCheckAt;
         if (result.IsValid
@@ -912,6 +973,13 @@ public partial class MainWindow : Window
             LastRevocationCheckAt = lastRevocationCheckAt,
             LastResult = result
         });
+    }
+
+    private static bool IsRevokedLicenseResult(LicenseValidationResult result)
+    {
+        return !result.IsValid
+            && (result.State == LicenseState.Canceled
+                || result.Message.Contains("iptal", StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task RefreshLicenseStatusAsync()
@@ -943,6 +1011,16 @@ public partial class MainWindow : Window
         LicenseRequiredCheck.IsChecked = _settings.License.Required;
         LicenseKeyBox.Text = cache.LicenseKey;
         UpdateLicenseUi(cache.LastResult);
+    }
+
+    private void ClearLocalLicenseUi(string detail)
+    {
+        LicenseRequiredCheck.IsChecked = _settings.License.Required;
+        LicenseKeyBox.Clear();
+        LicenseStateText.Text = "Lisans yok";
+        LicenseDetailText.Text = detail;
+        DashboardStatusText.Text = "Lisans gerekli";
+        StatusBarText.Text = detail;
     }
 
     private void UpdateLicenseUi(LicenseValidationResult result)
@@ -1167,9 +1245,19 @@ public partial class MainWindow : Window
             _settings.License.ActivationSignalUrl = LicenseSettings.DefaultActivationSignalUrl;
         }
 
-        if (_settings.License.ActivationSignalFields.Count == 0)
+        if (_settings.License.ActivationSignalFields is null || _settings.License.ActivationSignalFields.Count == 0)
         {
             _settings.License.ActivationSignalFields = LicenseSettings.CreateDefaultActivationSignalFields();
+        }
+
+        if (string.IsNullOrWhiteSpace(_settings.License.RevocationSignalUrl))
+        {
+            _settings.License.RevocationSignalUrl = LicenseSettings.DefaultRevocationSignalUrl;
+        }
+
+        if (_settings.License.RevocationSignalFields is null || _settings.License.RevocationSignalFields.Count == 0)
+        {
+            _settings.License.RevocationSignalFields = LicenseSettings.CreateDefaultRevocationSignalFields();
         }
     }
 
