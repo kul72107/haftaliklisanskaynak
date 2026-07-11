@@ -17,6 +17,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("DPAPI secret store", TestSecretStore),
     ("Static TXT license activation", TestStaticTxtLicense),
     ("Static TXT license revocation", TestStaticTxtRevocation),
+    ("Static TXT license validation keeps expiry", TestStaticTxtLicenseValidationKeepsExpiry),
     ("Update manifest version check", TestUpdateManifest),
     ("Update download avoids locked stale ZIP", TestUpdateDownloadAvoidsLockedStaleZip),
     ("License cache offline window", TestLicenseCache),
@@ -238,6 +239,52 @@ static async Task TestStaticTxtRevocation()
     Assert(activation.State == LicenseState.Invalid, "revoked activation invalid");
 }
 
+static async Task TestStaticTxtLicenseValidationKeepsExpiry()
+{
+    var key = "MY-KEEP-EXPIRY";
+    var hash = StaticLicenseClient.HashLicenseKey(key);
+    var licenseUrl = "https://license.test/licenses.txt";
+    var revokedUrl = "https://license.test/revoked.txt";
+    var paidUntil = DateTimeOffset.UtcNow.AddDays(3);
+    using var http = new HttpClient(new FakeLicenseHttpHandler(new Dictionary<string, string>
+    {
+        [licenseUrl] = $"{hash}|7|active|keep-expiry",
+        [revokedUrl] = "# none"
+    }));
+
+    var client = new StaticLicenseClient(http);
+    var result = await client.ValidateExistingAsync(key, new LicenseSettings
+    {
+        LicenseListUrl = licenseUrl,
+        RevokedListUrl = revokedUrl
+    }, "machine-1", new LicenseValidationResult
+    {
+        IsValid = true,
+        State = LicenseState.Active,
+        LicenseId = hash,
+        InstanceId = "existing-instance",
+        PaidUntil = paidUntil,
+        OfflineUntil = paidUntil
+    });
+
+    Assert(result.IsValid, "existing validation valid");
+    Assert(result.PaidUntil == paidUntil, "existing expiry preserved");
+
+    using var missingHttp = new HttpClient(new FakeLicenseHttpHandler(new Dictionary<string, string>
+    {
+        [licenseUrl] = "# removed",
+        [revokedUrl] = "# none"
+    }));
+    var missing = await new StaticLicenseClient(missingHttp).ValidateExistingAsync(key, new LicenseSettings
+    {
+        LicenseListUrl = licenseUrl,
+        RevokedListUrl = revokedUrl
+    }, "machine-1", result);
+
+    Assert(!missing.IsValid, "removed license invalid");
+    Assert(missing.Message.Contains("bulunamadi", StringComparison.OrdinalIgnoreCase), "removed license message");
+}
+
 static async Task TestUpdateManifest()
 {
     var manifestUrl = "https://updates.test/latest.json";
@@ -245,9 +292,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.9",
+              "version": "1.0.10",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.9.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.10.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -259,16 +306,16 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.9", "update version");
+    Assert(result.Manifest.Version == "1.0.10", "update version");
 }
 
 static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 {
     var root = CreateTempRoot();
-    var url = "https://updates.test/releases/ModernYedek-1.0.9.zip";
+    var url = "https://updates.test/releases/ModernYedek-1.0.10.zip";
     var payload = "fake update payload";
     var sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
-    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.9.zip");
+    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.10.zip");
     await File.WriteAllTextAsync(staleZipPath, "locked old file");
 
     await using var locked = new FileStream(staleZipPath, FileMode.Open, FileAccess.Read, FileShare.None);
@@ -279,14 +326,14 @@ static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 
     var path = await new UpdateClient(http).DownloadAndVerifyAsync(new UpdateManifest
     {
-        Version = "1.0.9",
+        Version = "1.0.10",
         Url = url,
         Sha256 = sha256
     }, root);
 
     Assert(File.Exists(path), "downloaded update exists");
     Assert(!string.Equals(path, staleZipPath, StringComparison.OrdinalIgnoreCase), "download path is unique");
-    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.9-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
+    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.10-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
     Assert(!File.Exists(path + ".download"), "partial download renamed");
 }
 
@@ -297,6 +344,7 @@ static async Task TestDefaultAppBehavior()
     var settings = SettingsService.CreateDefault();
 
     Assert(settings.AppBehavior.MinimizeToTrayOnClose, "default tray on close");
+    Assert(settings.License.Required, "license required by default");
     await service.SaveAsync(settings);
 
     var loaded = await service.LoadAsync();

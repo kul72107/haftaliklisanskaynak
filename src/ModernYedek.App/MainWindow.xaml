@@ -394,7 +394,7 @@
                             <StackPanel>
                                 <TextBlock Text="Lisans" FontSize="18" FontWeight="SemiBold" ToolTip="Uygulamanın çalışması için kullanılan lisans bilgileri."/>
                                 <TextBlock Text="Size verilen manuel lisans anahtarini girin. Key ilk aktivasyonda bu bilgisayara baglanir ve sure o anda baslar." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,16" ToolTip="Key ilk kullanıldığı bilgisayara bağlanır. Süre ilk aktivasyonda başlar."/>
-                                <CheckBox x:Name="LicenseRequiredCheck" Content="Lisans olmadan yedeklemeyi kilitle" Margin="0,0,0,12" ToolTip="Açık olursa geçerli lisans yokken yedekleme başlatılamaz."/>
+                                <TextBlock Text="Lisans zorunludur. Geçerli lisans yokken yedekleme başlatılamaz." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,12" ToolTip="Bu güvenlik ayarı kullanıcı tarafından kapatılamaz; geçerli lisans olmadan uygulama yedekleme çalıştırmaz."/>
                                 <TextBlock Text="Lisans anahtari" Foreground="{StaticResource Muted}" Margin="0,4,0,0" ToolTip="Size verilen manuel lisans key'i."/>
                                 <TextBox x:Name="LicenseKeyBox" ToolTip="Size verilen lisans anahtarını buraya yapıştırın. Örnek: MY-...."/>
                                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">

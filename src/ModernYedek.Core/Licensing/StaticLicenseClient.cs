@@ -22,31 +22,14 @@ public sealed class StaticLicenseClient
         var normalizedKey = NormalizeKey(licenseKey);
         var hash = HashLicenseKey(normalizedKey);
 
-        var revocation = await CheckRevocationAsync(hash, settings.RevokedListUrl, cancellationToken);
-        if (!revocation.Success)
+        var record = await FindUsableLicenseRecordAsync(hash, settings, cancellationToken);
+        if (!record.IsValid)
         {
-            return Invalid($"Iptal listesi kontrol edilemedi: {revocation.Message}", hash);
-        }
-
-        if (revocation.Success && revocation.IsRevoked)
-        {
-            return Invalid("Bu lisans iptal edilmis.", hash);
-        }
-
-        var licenses = await LoadLicensesAsync(settings.LicenseListUrl, cancellationToken);
-        var match = licenses.FirstOrDefault(license => string.Equals(license.Hash, hash, StringComparison.OrdinalIgnoreCase));
-        if (match is null)
-        {
-            return Invalid("Lisans listesinde bu key bulunamadi.", hash);
-        }
-
-        if (!string.Equals(match.Status, "active", StringComparison.OrdinalIgnoreCase))
-        {
-            return Invalid($"Lisans aktif degil: {match.Status}", hash);
+            return record.Result;
         }
 
         var now = DateTimeOffset.UtcNow;
-        var durationDays = Math.Max(1, match.DurationDays);
+        var durationDays = Math.Max(1, record.Match!.DurationDays);
         var paidUntil = now.AddDays(durationDays);
 
         return new LicenseValidationResult
@@ -61,7 +44,67 @@ public sealed class StaticLicenseClient
             ProductId = "modern-yedek",
             VariantId = durationDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Plan = $"manual_{durationDays}d",
-            Note = match.Note,
+            Note = record.Match.Note,
+            PaidUntil = paidUntil,
+            OfflineUntil = paidUntil,
+            ActivationLimit = 1,
+            ActivationCount = 1
+        };
+    }
+
+    public async Task<LicenseValidationResult> ValidateExistingAsync(
+        string licenseKey,
+        LicenseSettings settings,
+        string machineId,
+        LicenseValidationResult? existingResult,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedKey = NormalizeKey(licenseKey);
+        var hash = HashLicenseKey(normalizedKey);
+
+        var record = await FindUsableLicenseRecordAsync(hash, settings, cancellationToken);
+        if (!record.IsValid)
+        {
+            return record.Result;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var durationDays = Math.Max(1, record.Match!.DurationDays);
+        var paidUntil = existingResult?.PaidUntil ?? existingResult?.OfflineUntil ?? now.AddDays(durationDays);
+        if (paidUntil <= now)
+        {
+            return new LicenseValidationResult
+            {
+                IsValid = false,
+                State = LicenseState.Expired,
+                Message = "Lisans suresi dolmus. Ayni key yeniden sure baslatamaz; yeni key gerekir.",
+                Provider = "github-pages-txt",
+                LicenseId = hash,
+                InstanceId = existingResult?.InstanceId ?? BuildInstanceId(hash, machineId),
+                ProductId = "modern-yedek",
+                VariantId = durationDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Plan = $"manual_{durationDays}d",
+                Note = existingResult?.Note ?? record.Match.Note,
+                PaidUntil = paidUntil,
+                OfflineUntil = paidUntil,
+                ActivationLimit = 1,
+                ActivationCount = 1
+            };
+        }
+
+        return new LicenseValidationResult
+        {
+            IsValid = true,
+            State = LicenseState.Active,
+            Message = "Lisans dogrulandi. Sure ilk aktivasyondaki bitis tarihine gore korunuyor.",
+            Provider = "github-pages-txt",
+            LicenseId = hash,
+            InstanceId = existingResult?.InstanceId ?? BuildInstanceId(hash, machineId),
+            CustomerEmail = string.Empty,
+            ProductId = "modern-yedek",
+            VariantId = durationDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Plan = $"manual_{durationDays}d",
+            Note = record.Match.Note,
             PaidUntil = paidUntil,
             OfflineUntil = paidUntil,
             ActivationLimit = 1,
@@ -167,6 +210,37 @@ public sealed class StaticLicenseClient
         return records;
     }
 
+    private async Task<StaticLicenseRecordCheck> FindUsableLicenseRecordAsync(
+        string hash,
+        LicenseSettings settings,
+        CancellationToken cancellationToken)
+    {
+        var revocation = await CheckRevocationAsync(hash, settings.RevokedListUrl, cancellationToken);
+        if (!revocation.Success)
+        {
+            return StaticLicenseRecordCheck.Invalid(Invalid($"Iptal listesi kontrol edilemedi: {revocation.Message}", hash));
+        }
+
+        if (revocation.IsRevoked)
+        {
+            return StaticLicenseRecordCheck.Invalid(Invalid("Bu lisans iptal edilmis.", hash));
+        }
+
+        var licenses = await LoadLicensesAsync(settings.LicenseListUrl, cancellationToken);
+        var match = licenses.FirstOrDefault(license => string.Equals(license.Hash, hash, StringComparison.OrdinalIgnoreCase));
+        if (match is null)
+        {
+            return StaticLicenseRecordCheck.Invalid(Invalid("Lisans listesinde bu key bulunamadi.", hash));
+        }
+
+        if (!string.Equals(match.Status, "active", StringComparison.OrdinalIgnoreCase))
+        {
+            return StaticLicenseRecordCheck.Invalid(Invalid($"Lisans aktif degil: {match.Status}", hash));
+        }
+
+        return StaticLicenseRecordCheck.Valid(match);
+    }
+
     private static LicenseValidationResult Invalid(string message, string hash)
     {
         return new LicenseValidationResult
@@ -197,5 +271,22 @@ public sealed class StaticLicenseClient
         public int DurationDays { get; init; }
         public string Status { get; init; } = string.Empty;
         public string Note { get; init; } = string.Empty;
+    }
+
+    private sealed class StaticLicenseRecordCheck
+    {
+        public bool IsValid { get; init; }
+        public StaticLicenseRecord? Match { get; init; }
+        public LicenseValidationResult Result { get; init; } = new();
+
+        public static StaticLicenseRecordCheck Valid(StaticLicenseRecord match)
+        {
+            return new StaticLicenseRecordCheck { IsValid = true, Match = match };
+        }
+
+        public static StaticLicenseRecordCheck Invalid(LicenseValidationResult result)
+        {
+            return new StaticLicenseRecordCheck { IsValid = false, Result = result };
+        }
     }
 }

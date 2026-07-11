@@ -687,7 +687,15 @@ public partial class MainWindow : Window
             var result = await ActivateStaticLicenseAsync(key);
             await SaveLicenseResultAsync(key, result);
             await _settingsService.SaveAsync(_settings);
-            UpdateLicenseUi(result);
+            if (!result.IsValid && ShouldClearLocalLicenseResult(result))
+            {
+                ClearLocalLicenseUi(result.Message);
+            }
+            else
+            {
+                UpdateLicenseUi(result);
+            }
+
             StatusBarText.Text = result.Message;
             if (result.IsValid)
             {
@@ -721,7 +729,15 @@ public partial class MainWindow : Window
             var result = await ValidateLicenseOnlineAsync(key);
             await SaveLicenseResultAsync(key, result);
             await _settingsService.SaveAsync(_settings);
-            UpdateLicenseUi(result);
+            if (!result.IsValid && ShouldClearLocalLicenseResult(result))
+            {
+                ClearLocalLicenseUi(result.Message);
+            }
+            else
+            {
+                UpdateLicenseUi(result);
+            }
+
             StatusBarText.Text = result.Message;
             if (result.IsValid)
             {
@@ -895,16 +911,12 @@ public partial class MainWindow : Window
 
     private async Task<bool> EnsureLicenseUsableAsync()
     {
-        if (!_settings.License.Required)
-        {
-            return true;
-        }
-
+        _settings.License.Required = true;
         var cache = await _licenseCacheService.LoadAsync();
         if (LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
         {
-            var revocation = await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup: false);
-            if (!revocation)
+            var authority = await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup: false);
+            if (!authority)
             {
                 return false;
             }
@@ -936,8 +948,8 @@ public partial class MainWindow : Window
             cache = await _licenseCacheService.LoadAsync();
             if (LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
             {
-                var revocation = await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup: false);
-                if (!revocation)
+                var authority = await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup: false);
+                if (!authority)
                 {
                     return false;
                 }
@@ -955,25 +967,50 @@ public partial class MainWindow : Window
     private async Task<LicenseValidationResult> ValidateLicenseOnlineAsync(string licenseKey)
     {
         var cache = await _licenseCacheService.LoadAsync();
-        if (IsCachedLicenseUsableForKey(cache, licenseKey))
-        {
-            if (!await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup: false))
-            {
-                return cache!.LastResult;
-            }
+        var existingResult = IsCachedLicenseForKey(cache, licenseKey)
+            ? cache!.LastResult
+            : null;
 
-            return cache!.LastResult;
-        }
-
-        return await ActivateStaticLicenseAsync(licenseKey);
+        return await new StaticLicenseClient().ValidateExistingAsync(
+            licenseKey,
+            _settings.License,
+            MachineIdentity.Current(),
+            existingResult);
     }
 
     private async Task<LicenseValidationResult> ActivateStaticLicenseAsync(string licenseKey)
     {
         var cache = await _licenseCacheService.LoadAsync();
+        if (IsCachedLicenseForKey(cache, licenseKey)
+            && !LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
+        {
+            var paidUntil = cache!.LastResult.PaidUntil ?? cache.LastResult.OfflineUntil;
+            if (paidUntil is not null && paidUntil <= DateTimeOffset.UtcNow)
+            {
+                return new LicenseValidationResult
+                {
+                    IsValid = false,
+                    State = LicenseState.Expired,
+                    Message = "Bu key daha once bu bilgisayarda kullanilmis ve suresi dolmus. Yeni key gerekir.",
+                    Provider = cache.LastResult.Provider,
+                    LicenseId = cache.LastResult.LicenseId,
+                    InstanceId = cache.LastResult.InstanceId,
+                    CustomerEmail = cache.LastResult.CustomerEmail,
+                    ProductId = cache.LastResult.ProductId,
+                    VariantId = cache.LastResult.VariantId,
+                    Plan = cache.LastResult.Plan,
+                    Note = cache.LastResult.Note,
+                    PaidUntil = paidUntil,
+                    OfflineUntil = paidUntil,
+                    ActivationLimit = cache.LastResult.ActivationLimit,
+                    ActivationCount = cache.LastResult.ActivationCount
+                };
+            }
+        }
+
         if (IsCachedLicenseUsableForKey(cache, licenseKey))
         {
-            if (!await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup: false))
+            if (!await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup: false))
             {
                 return cache!.LastResult;
             }
@@ -1074,7 +1111,13 @@ public partial class MainWindow : Window
             return false;
         }
 
-        return string.Equals(cache!.LicenseKey.Trim(), licenseKey.Trim(), StringComparison.OrdinalIgnoreCase);
+        return IsCachedLicenseForKey(cache, licenseKey);
+    }
+
+    private static bool IsCachedLicenseForKey(LicenseCache? cache, string licenseKey)
+    {
+        return cache is not null
+            && string.Equals(cache.LicenseKey.Trim(), licenseKey.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task EnforceRevocationPolicyAsync(bool showPopup)
@@ -1085,10 +1128,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        _ = await EnsureCachedLicenseNotRevokedAsync(cache!, showPopup);
+        _ = await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup);
     }
 
-    private async Task<bool> EnsureCachedLicenseNotRevokedAsync(LicenseCache cache, bool showPopup)
+    private async Task<bool> EnsureCachedLicenseStillAuthorizedAsync(LicenseCache cache, bool showPopup)
     {
         if (!cache.LastResult.IsValid)
         {
@@ -1099,62 +1142,86 @@ public partial class MainWindow : Window
             ? cache.LastResult.LicenseId.Trim().ToUpperInvariant()
             : StaticLicenseClient.HashLicenseKey(cache.LicenseKey);
 
-        var result = await new StaticLicenseClient().CheckRevocationAsync(hash, _settings.License.RevokedListUrl);
-        if (result.Success)
+        try
         {
+            var result = await new StaticLicenseClient().ValidateExistingAsync(
+                cache.LicenseKey,
+                _settings.License,
+                MachineIdentity.Current(),
+                cache.LastResult);
+
             cache.LastRevocationCheckAt = DateTimeOffset.UtcNow;
+            cache.LicenseListUrl = _settings.License.LicenseListUrl;
             cache.RevokedListUrl = _settings.License.RevokedListUrl;
 
-            if (result.IsRevoked)
+            if (!result.IsValid)
             {
-                var message = "Bu lisans iptal edildi. Yerel lisans kaydi silindi; tekrar kullanmak icin yeni key gerekir.";
+                var message = result.Message.Contains("bulunamadi", StringComparison.OrdinalIgnoreCase)
+                    ? "Bu lisans artik lisans listesinde yok. Yerel lisans kaydi silindi; tekrar kullanmak icin yeni key gerekir."
+                    : result.Message;
                 await TrySendRevocationSignalAsync(hash, cache.LastResult.Note);
                 await _licenseCacheService.ClearAsync();
                 ClearLocalLicenseUi(message);
                 if (showPopup)
                 {
-                    ShowWarning(message, "Lisans iptal edildi");
+                    ShowWarning(message, "Lisans gecersiz");
                 }
 
                 return false;
             }
 
+            cache.LastResult = result;
             await _licenseCacheService.SaveAsync(cache);
             return true;
         }
-
-        if (cache.LastRevocationCheckAt is not null
-            && DateTimeOffset.UtcNow - cache.LastRevocationCheckAt.Value <= RevocationCheckMaxAge)
+        catch
         {
-            StatusBarText.Text = "Iptal listesi okunamadi, son kontrol 24 saatten yeni oldugu icin devam ediliyor.";
-            return true;
-        }
+            if (cache.LastRevocationCheckAt is not null
+                && DateTimeOffset.UtcNow - cache.LastRevocationCheckAt.Value <= RevocationCheckMaxAge)
+            {
+                StatusBarText.Text = "Lisans listesi okunamadi, son kontrol 24 saatten yeni oldugu icin devam ediliyor.";
+                return true;
+            }
 
-        LicenseStateText.Text = "Lisans kontrolu gerekli";
-        LicenseDetailText.Text =
-            "Iptal listesi 24 saatten uzun suredir kontrol edilemedi. " +
-            "Lutfen internete baglanip lisansi tekrar dogrulayin.";
-        if (showPopup)
-        {
-            ShowWarning(LicenseDetailText.Text, "Lisans kontrolu gerekli");
-        }
+            LicenseStateText.Text = "Lisans kontrolu gerekli";
+            LicenseDetailText.Text =
+                "Lisans listesi 24 saatten uzun suredir kontrol edilemedi. " +
+                "Lutfen internete baglanip lisansi tekrar dogrulayin.";
+            if (showPopup)
+            {
+                ShowWarning(LicenseDetailText.Text, "Lisans kontrolu gerekli");
+            }
 
-        return false;
+            return false;
+        }
     }
 
     private async Task SaveLicenseResultAsync(string licenseKey, LicenseValidationResult result)
     {
-        if (IsRevokedLicenseResult(result))
+        var existing = await _licenseCacheService.LoadAsync();
+        var hadSameCachedLicense = IsCachedLicenseForKey(existing, licenseKey);
+
+        if (!result.IsValid)
         {
-            var hash = !string.IsNullOrWhiteSpace(result.LicenseId)
-                ? result.LicenseId
-                : StaticLicenseClient.HashLicenseKey(licenseKey);
-            await TrySendRevocationSignalAsync(hash, result.Note);
-            await _licenseCacheService.ClearAsync();
+            if (hadSameCachedLicense && ShouldClearLocalLicenseResult(result))
+            {
+                var hash = !string.IsNullOrWhiteSpace(result.LicenseId)
+                    ? result.LicenseId
+                    : StaticLicenseClient.HashLicenseKey(licenseKey);
+                await TrySendRevocationSignalAsync(hash, result.Note);
+                await _licenseCacheService.ClearAsync();
+                return;
+            }
+
+            if (hadSameCachedLicense && result.State == LicenseState.Expired)
+            {
+                existing!.LastResult = result;
+                await _licenseCacheService.SaveAsync(existing);
+            }
+
             return;
         }
 
-        var existing = await _licenseCacheService.LoadAsync();
         var lastRevocationCheckAt = existing?.LastRevocationCheckAt;
         if (result.IsValid
             && string.Equals(result.Provider, "github-pages-txt", StringComparison.OrdinalIgnoreCase)
@@ -1175,11 +1242,13 @@ public partial class MainWindow : Window
         });
     }
 
-    private static bool IsRevokedLicenseResult(LicenseValidationResult result)
+    private static bool ShouldClearLocalLicenseResult(LicenseValidationResult result)
     {
         return !result.IsValid
             && (result.State == LicenseState.Canceled
-                || result.Message.Contains("iptal", StringComparison.OrdinalIgnoreCase));
+                || result.Message.Contains("iptal", StringComparison.OrdinalIgnoreCase)
+                || result.Message.Contains("bulunamadi", StringComparison.OrdinalIgnoreCase)
+                || result.Message.Contains("aktif degil", StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task RefreshLicenseStatusAsync()
@@ -1187,7 +1256,6 @@ public partial class MainWindow : Window
         var cache = await _licenseCacheService.LoadAsync();
         if (cache is null)
         {
-            LicenseRequiredCheck.IsChecked = _settings.License.Required;
             LicenseStateText.Text = "Lisans yok";
             LicenseDetailText.Text = "Lisans anahtari henuz aktiflestirilmedi.";
             UpdateLicenseBanner(hasActiveLicense: false);
@@ -1210,14 +1278,12 @@ public partial class MainWindow : Window
             _settings.License.RevokedListUrl = cache.RevokedListUrl;
         }
 
-        LicenseRequiredCheck.IsChecked = _settings.License.Required;
         LicenseKeyBox.Text = cache.LicenseKey;
         UpdateLicenseUi(cache.LastResult);
     }
 
     private void ClearLocalLicenseUi(string detail)
     {
-        LicenseRequiredCheck.IsChecked = _settings.License.Required;
         LicenseKeyBox.Clear();
         LicenseStateText.Text = "Lisans yok";
         LicenseDetailText.Text = detail;
@@ -1385,8 +1451,6 @@ public partial class MainWindow : Window
         DeleteLocalAfterUploadCheck.IsChecked = _settings.Cloud.DeleteLocalAfterUpload;
         BucketBox.Text = _settings.Cloud.BucketName;
         PrefixBox.Text = _settings.Cloud.ObjectPrefix;
-
-        LicenseRequiredCheck.IsChecked = _settings.License.Required;
     }
 
     private void CollectSettingsFromUi()
@@ -1413,7 +1477,7 @@ public partial class MainWindow : Window
         _settings.Cloud.BucketName = BucketBox.Text.Trim();
         _settings.Cloud.ObjectPrefix = PrefixBox.Text.Trim();
 
-        _settings.License.Required = LicenseRequiredCheck.IsChecked == true;
+        _settings.License.Required = true;
         NormalizeLicenseSettings();
         NormalizeUpdateSettings();
     }
@@ -1463,6 +1527,8 @@ public partial class MainWindow : Window
 
     private void NormalizeLicenseSettings()
     {
+        _settings.License.Required = true;
+
         if (string.IsNullOrWhiteSpace(_settings.License.ApiBaseUrl)
             || _settings.License.ApiBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase)
             || _settings.License.ApiBaseUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase)
