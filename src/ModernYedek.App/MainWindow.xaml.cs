@@ -25,6 +25,8 @@ namespace ModernYedek.App;
 public partial class MainWindow : Window
 {
     private static readonly TimeSpan RevocationCheckMaxAge = TimeSpan.FromHours(24);
+    private const string LicenseRequiredBannerTitle = "LİSANS GEREKLİ";
+    private const string LicenseUpgradeBannerTitle = "LİSANSI YÜKSELTMEK İSTİYORSANIZ";
     private readonly AppPaths _paths;
     private readonly SettingsService _settingsService;
     private readonly DpapiSecretStore _secretStore;
@@ -990,6 +992,7 @@ public partial class MainWindow : Window
             LicenseRequiredCheck.IsChecked = _settings.License.Required;
             LicenseStateText.Text = "Lisans yok";
             LicenseDetailText.Text = "Lisans anahtari henuz aktiflestirilmedi.";
+            UpdateLicenseBanner(hasActiveLicense: false);
             return;
         }
 
@@ -1021,10 +1024,12 @@ public partial class MainWindow : Window
         LicenseDetailText.Text = detail;
         DashboardStatusText.Text = "Lisans gerekli";
         StatusBarText.Text = detail;
+        UpdateLicenseBanner(hasActiveLicense: false);
     }
 
     private void UpdateLicenseUi(LicenseValidationResult result)
     {
+        UpdateLicenseBanner(result.IsValid);
         LicenseStateText.Text = result.IsValid
             ? $"Lisans aktif: {result.State}"
             : $"Lisans gecersiz: {result.State}";
@@ -1038,6 +1043,13 @@ public partial class MainWindow : Window
             $"Odeme bitis: {paidUntil}{Environment.NewLine}" +
             $"Offline izin: {offlineUntil}{Environment.NewLine}" +
             $"Cihaz: {result.ActivationCount}/{result.ActivationLimit}";
+    }
+
+    private void UpdateLicenseBanner(bool hasActiveLicense)
+    {
+        LicenseBannerTitleText.Text = hasActiveLicense
+            ? LicenseUpgradeBannerTitle
+            : LicenseRequiredBannerTitle;
     }
 
     private async void RefreshLogs_Click(object sender, RoutedEventArgs e)

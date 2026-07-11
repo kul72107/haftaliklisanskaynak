@@ -140,41 +140,31 @@
 
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
-                <RowDefinition Height="118"/>
+                <RowDefinition Height="136"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="44"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+            <Border Grid.Row="0" Background="#E9FFF1" BorderBrush="#25D366" BorderThickness="0,0,0,3">
                 <Grid Margin="24,0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="96"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock x:Name="PageTitleText" Text="Dashboard" Foreground="{StaticResource Ink}" FontSize="24" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="PageSubtitleText" Text="Yedekleme durumunu ve önemli uyarıları tek ekrandan takip edin." Foreground="{StaticResource Muted}" FontSize="13"/>
-                    </StackPanel>
-                    <Border Grid.Column="1" Background="#E9FFF1" BorderBrush="#25D366" BorderThickness="2" CornerRadius="8" Padding="12,8" Margin="12,10">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="64"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Width="56" Height="56" Background="#25D366" CornerRadius="28" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <TextBlock Text="☎" Foreground="White" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="LİSANS GEREKLİ" Foreground="#0B3D22" FontSize="22" FontWeight="Black"/>
-                                <TextBlock Text="LİSANS İÇİN WHATSAPPTAN BU NUMARADAN LİSANS TALEP EDİNİZ: 05300221838"
-                                           Foreground="#0B3D22"
-                                           FontSize="17"
-                                           FontWeight="Bold"
-                                           TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </Grid>
+                    <Border Width="78" Height="78" Background="#25D366" CornerRadius="39" HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock Text="☎" Foreground="White" FontSize="46" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock x:Name="PageTitleText" Text="Dashboard" Visibility="Collapsed"/>
+                        <TextBlock x:Name="PageSubtitleText" Text="Yedekleme durumunu ve önemli uyarıları tek ekrandan takip edin." Visibility="Collapsed"/>
+                        <TextBlock x:Name="LicenseBannerTitleText" Text="LİSANS GEREKLİ" Foreground="#0B3D22" FontSize="32" FontWeight="Black" TextWrapping="Wrap"/>
+                        <TextBlock Text="LİSANS İÇİN WHATSAPPTAN BU NUMARADAN LİSANS TALEP EDİNİZ: 05300221838"
+                                   Foreground="#0B3D22"
+                                   FontSize="21"
+                                   FontWeight="Bold"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="Şimdi Yedekle" Style="{StaticResource PrimaryButtonStyle}" Click="RunBackup_Click"/>
                         <Button Content="Kaydet" Style="{StaticResource SecondaryButtonStyle}" Click="SaveSettings_Click"/>
