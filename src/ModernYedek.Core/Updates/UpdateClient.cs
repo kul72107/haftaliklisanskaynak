@@ -60,35 +60,75 @@ public sealed class UpdateClient
             fileName = $"ModernYedek-{manifest.Version}.zip";
         }
 
-        var targetPath = Path.Combine(downloadDirectory, fileName);
+        var extension = Path.GetExtension(fileName);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = ".zip";
+        }
+
+        var baseName = Path.GetFileNameWithoutExtension(fileName);
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            baseName = $"ModernYedek-{manifest.Version}";
+        }
+
+        var targetPath = Path.Combine(downloadDirectory, $"{baseName}-{Guid.NewGuid():N}{extension}");
+        var partialPath = targetPath + ".download";
         using var response = await _httpClient.GetAsync(manifest.Url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var totalBytes = response.Content.Headers.ContentLength;
         await using var input = await response.Content.ReadAsStreamAsync(cancellationToken);
-        await using var output = File.Create(targetPath);
-        var buffer = new byte[81920];
-        long readTotal = 0;
-        while (true)
+        try
         {
-            var read = await input.ReadAsync(buffer, cancellationToken);
-            if (read == 0)
+            await using (var output = new FileStream(partialPath, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
             {
-                break;
+                var buffer = new byte[81920];
+                long readTotal = 0;
+                while (true)
+                {
+                    var read = await input.ReadAsync(buffer, cancellationToken);
+                    if (read == 0)
+                    {
+                        break;
+                    }
+
+                    await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                    readTotal += read;
+                    if (totalBytes is > 0)
+                    {
+                        progress?.Report(readTotal / (double)totalBytes.Value);
+                    }
+                }
+
+                await output.FlushAsync(cancellationToken);
             }
 
-            await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-            readTotal += read;
-            if (totalBytes is > 0)
+            File.Move(partialPath, targetPath);
+            VerifySha256(targetPath, manifest.Sha256);
+            progress?.Report(1);
+            return targetPath;
+        }
+        catch
+        {
+            TryDeleteFile(partialPath);
+            TryDeleteFile(targetPath);
+            throw;
+        }
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
             {
-                progress?.Report(readTotal / (double)totalBytes.Value);
+                File.Delete(path);
             }
         }
-
-        await output.FlushAsync(cancellationToken);
-        VerifySha256(targetPath, manifest.Sha256);
-        progress?.Report(1);
-        return targetPath;
+        catch
+        {
+        }
     }
 
     public static void VerifySha256(string filePath, string expectedSha256)
