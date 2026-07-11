@@ -83,8 +83,10 @@ public sealed class MailSettings
 
 public sealed class LicenseSettings
 {
+    public const string DefaultApiBaseUrl = "https://349f91a2043dea99-182-92-64-210.serveousercontent.com";
+
     public bool Required { get; set; } = true;
-    public string ApiBaseUrl { get; set; } = "http://localhost:5088";
+    public string ApiBaseUrl { get; set; } = DefaultApiBaseUrl;
     public string Email { get; set; } = string.Empty;
 }
 

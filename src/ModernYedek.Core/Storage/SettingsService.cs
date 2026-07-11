@@ -70,7 +70,7 @@ public sealed class SettingsService
             License = new LicenseSettings
             {
                 Required = true,
-                ApiBaseUrl = "http://localhost:5088"
+                ApiBaseUrl = LicenseSettings.DefaultApiBaseUrl
             }
         };
     }

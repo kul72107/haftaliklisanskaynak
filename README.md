@@ -54,7 +54,7 @@ Akis:
 1. Odeme iyzico, PayTR, Shopier, havale/EFT veya baska bir kanal ile alinir.
 2. Odeme onaylaninca telefondan veya tarayicidan License API admin paneli acilir.
 3. Email, sure ve cihaz limiti girilerek tek kullanimlik `MY-...` lisans uretilir.
-4. Kullanici uygulamadaki `Lisans` ekranina email ve lisans anahtarini girer.
+4. Kullanici uygulamadaki `Lisans` ekranina sadece lisans anahtarini girer.
 5. Key ilk aktivasyonda bu bilgisayara baglanir ve sure o anda baslar.
 6. Uygulama lisansi online dogrular ve sonucu `%APPDATA%\ModernYedek\secrets.dat` icinde DPAPI ile saklar.
 7. Internet yoksa son basarili dogrulamadan sonra en fazla 72 saat offline kullanima izin verilir.
@@ -78,7 +78,7 @@ PORT="5088" \
 npm start
 ```
 
-Node surumu `.NET` API ile ayni endpointleri sunar ve WPF uygulamada ekstra degisiklik gerektirmez. Public URL hazir olunca uygulamadaki `Lisans > License API URL` alanina o base URL yazilir.
+Node surumu `.NET` API ile ayni endpointleri sunar. Public URL uygulama icine varsayilan lisans sunucusu olarak gomuludur; kullanici sadece key girer.
 
 Telefondan key uretme paneli:
 

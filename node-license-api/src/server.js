@@ -342,6 +342,7 @@ function normalizeMachineId(value) {
 }
 
 function emailMatches(record, email) {
+  if (!String(email || '').trim()) return true;
   return normalizeEmail(record.email) === normalizeEmail(email);
 }
 

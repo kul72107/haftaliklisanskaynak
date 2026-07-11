@@ -497,6 +497,11 @@ internal sealed class LicenseStore
 
     private bool EmailMatches(LicenseRecord record, string email)
     {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return true;
+        }
+
         return string.Equals(record.Email, NormalizeEmail(email), StringComparison.OrdinalIgnoreCase);
     }
 

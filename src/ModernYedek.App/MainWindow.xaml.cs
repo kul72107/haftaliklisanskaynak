@@ -73,6 +73,7 @@ public partial class MainWindow : Window
                 _settings = await _settingsService.LoadAsync();
             }
 
+            NormalizeLicenseSettings();
             BindSettings();
             await RefreshSecretStatusAsync();
             await RefreshLicenseStatusAsync();
@@ -349,9 +350,9 @@ public partial class MainWindow : Window
         {
             CollectSettingsFromUi();
             var key = LicenseKeyBox.Text.Trim();
-            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(_settings.License.Email))
+            if (string.IsNullOrWhiteSpace(key))
             {
-                StatusBarText.Text = "Email ve lisans anahtari gerekli.";
+                StatusBarText.Text = "Lisans anahtari gerekli.";
                 return;
             }
 
@@ -376,9 +377,9 @@ public partial class MainWindow : Window
         {
             CollectSettingsFromUi();
             var key = LicenseKeyBox.Text.Trim();
-            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(_settings.License.Email))
+            if (string.IsNullOrWhiteSpace(key))
             {
-                StatusBarText.Text = "Email ve lisans anahtari gerekli.";
+                StatusBarText.Text = "Lisans anahtari gerekli.";
                 return;
             }
 
@@ -523,10 +524,10 @@ public partial class MainWindow : Window
             ? LicenseKeyBox.Text.Trim()
             : cache?.LicenseKey ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(_settings.License.Email))
+        if (string.IsNullOrWhiteSpace(key))
         {
             LicenseStateText.Text = "Lisans gerekli";
-            LicenseDetailText.Text = "Email ve lisans anahtari girilmedi.";
+            LicenseDetailText.Text = "Lisans anahtari girilmedi.";
             return false;
         }
 
@@ -577,16 +578,9 @@ public partial class MainWindow : Window
         if (cache is null)
         {
             LicenseRequiredCheck.IsChecked = _settings.License.Required;
-            LicenseApiUrlBox.Text = _settings.License.ApiBaseUrl;
-            LicenseEmailBox.Text = _settings.License.Email;
             LicenseStateText.Text = "Lisans yok";
             LicenseDetailText.Text = "Lisans anahtari henuz aktiflestirilmedi.";
             return;
-        }
-
-        if (string.IsNullOrWhiteSpace(_settings.License.Email))
-        {
-            _settings.License.Email = cache.Email;
         }
 
         if (string.IsNullOrWhiteSpace(_settings.License.ApiBaseUrl))
@@ -595,8 +589,6 @@ public partial class MainWindow : Window
         }
 
         LicenseRequiredCheck.IsChecked = _settings.License.Required;
-        LicenseApiUrlBox.Text = _settings.License.ApiBaseUrl;
-        LicenseEmailBox.Text = _settings.License.Email;
         LicenseKeyBox.Text = cache.LicenseKey;
         UpdateLicenseUi(cache.LastResult);
     }
@@ -716,8 +708,6 @@ public partial class MainWindow : Window
         PrefixBox.Text = _settings.Cloud.ObjectPrefix;
 
         LicenseRequiredCheck.IsChecked = _settings.License.Required;
-        LicenseApiUrlBox.Text = _settings.License.ApiBaseUrl;
-        LicenseEmailBox.Text = _settings.License.Email;
     }
 
     private void CollectSettingsFromUi()
@@ -743,10 +733,7 @@ public partial class MainWindow : Window
         _settings.Cloud.ObjectPrefix = PrefixBox.Text.Trim();
 
         _settings.License.Required = LicenseRequiredCheck.IsChecked == true;
-        _settings.License.ApiBaseUrl = string.IsNullOrWhiteSpace(LicenseApiUrlBox.Text)
-            ? "http://localhost:5088"
-            : LicenseApiUrlBox.Text.Trim();
-        _settings.License.Email = LicenseEmailBox.Text.Trim();
+        NormalizeLicenseSettings();
     }
 
     private List<DayOfWeek> ReadSelectedDays()
@@ -790,6 +777,18 @@ public partial class MainWindow : Window
             : "Kapalı";
 
         DiskSpaceText.Text = GetDiskSummary();
+    }
+
+    private void NormalizeLicenseSettings()
+    {
+        if (string.IsNullOrWhiteSpace(_settings.License.ApiBaseUrl)
+            || _settings.License.ApiBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase)
+            || _settings.License.ApiBaseUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+        {
+            _settings.License.ApiBaseUrl = LicenseSettings.DefaultApiBaseUrl;
+        }
+
+        _settings.License.Email = string.Empty;
     }
 
     private string GetDiskSummary()

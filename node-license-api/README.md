@@ -22,7 +22,7 @@ npm start
 - `POST /license/activate`
 - `POST /license/validate`
 
-The WPF app only needs the public base URL in its `License API URL` field.
+The WPF app embeds the public base URL and only asks the customer for a license key.
 
 ## Persistent data
 
