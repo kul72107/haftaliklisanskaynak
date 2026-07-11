@@ -1,0 +1,424 @@
+<Window x:Class="ModernYedek.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Modern Yedek" Height="820" Width="1240" MinHeight="720" MinWidth="1100"
+        WindowStartupLocation="CenterScreen" Loaded="Window_Loaded">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Ink" Color="#18202F"/>
+        <SolidColorBrush x:Key="Muted" Color="#667085"/>
+        <SolidColorBrush x:Key="Panel" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="Line" Color="#D9E0EA"/>
+        <SolidColorBrush x:Key="Accent" Color="#1F7A6D"/>
+
+        <Style x:Key="NavButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Margin" Value="14,3"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Foreground" Value="#DCE6F2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="7" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+                            <ContentPresenter VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#233147"/>
+                                <Setter Property="BorderBrush" Value="#334762"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1F7A6D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="MinWidth" Value="118"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="{StaticResource Accent}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+            <Setter Property="Background" Value="#F4F7FB"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Panel}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="Margin" Value="0,0,14,14"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="9,6"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="PasswordBox">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="9,6"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+
+        <Style TargetType="ListBox">
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="#F5F7FB">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="236"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="#121A27">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Top" Margin="18,22,18,18">
+                    <TextBlock Text="Modern Yedek" Foreground="White" FontSize="23" FontWeight="Bold"/>
+                    <TextBlock Text="ZIP, zamanlama ve bulut" Foreground="#A8B4C7" FontSize="12" Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Bottom" Margin="14,14,14,20">
+                    <TextBlock x:Name="StoragePathText" Foreground="#A8B4C7" FontSize="11" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Dashboard" Tag="Dashboard" Click="Nav_Click"/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Kaynaklar" Tag="Sources" Click="Nav_Click"/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Hedefler" Tag="Targets" Click="Nav_Click"/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Zamanlama" Tag="Schedule" Click="Nav_Click"/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Bulut" Tag="Cloud" Click="Nav_Click"/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Güvenlik" Tag="Security" Click="Nav_Click"/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Lisans" Tag="License" Click="Nav_Click"/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Loglar" Tag="Logs" Click="Nav_Click"/>
+                    <Button Style="{StaticResource NavButtonStyle}" Content="Ayarlar" Tag="Settings" Click="Nav_Click"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="78"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="44"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+                <Grid Margin="24,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="PageTitleText" Text="Dashboard" Foreground="{StaticResource Ink}" FontSize="24" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="PageSubtitleText" Text="Yedekleme durumunu ve önemli uyarıları tek ekrandan takip edin." Foreground="{StaticResource Muted}" FontSize="13"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="Şimdi Yedekle" Style="{StaticResource PrimaryButtonStyle}" Click="RunBackup_Click"/>
+                        <Button Content="Kaydet" Style="{StaticResource SecondaryButtonStyle}" Click="SaveSettings_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <Grid Margin="24">
+                    <StackPanel x:Name="DashboardPanel">
+                        <UniformGrid Columns="4">
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Son Durum" Foreground="{StaticResource Muted}" FontSize="12"/>
+                                    <TextBlock x:Name="DashboardStatusText" Text="Hazır" Foreground="{StaticResource Ink}" FontSize="22" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Sıradaki Çalışma" Foreground="{StaticResource Muted}" FontSize="12"/>
+                                    <TextBlock x:Name="NextRunText" Text="-" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Hedef Disk" Foreground="{StaticResource Muted}" FontSize="12"/>
+                                    <TextBlock x:Name="DiskSpaceText" Text="-" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Bulut" Foreground="{StaticResource Muted}" FontSize="12"/>
+                                    <TextBlock x:Name="CloudStateText" Text="Kapalı" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <Border Style="{StaticResource CardStyle}" Margin="0,8,0,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Yedek Özeti" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+                                    <TextBlock x:Name="LastArchiveText" Text="Henüz yedek alınmadı." Margin="0,12,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="ErrorSummaryText" Text="Kritik hata yok." Margin="0,8,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                    <Button Content="Eski INI İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportLegacy_Click"/>
+                                    <Button Content="Logları Yenile" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshLogs_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="SourcesPanel" Visibility="Collapsed">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Kaynak klasörler ve dosyalar" FontSize="18" FontWeight="SemiBold"/>
+                                <ListBox x:Name="SourcesList" Height="190" Margin="0,12,0,12"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="138"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="SourcePathBox"/>
+                                    <ComboBox x:Name="SourceTypeBox" Grid.Column="1" Margin="8,0,0,0" SelectedIndex="0">
+                                        <ComboBoxItem Content="Klasör"/>
+                                        <ComboBoxItem Content="Dosya"/>
+                                    </ComboBox>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                                        <Button Content="Seç" Style="{StaticResource SecondaryButtonStyle}" Click="BrowseSource_Click"/>
+                                        <Button Content="Ekle" Style="{StaticResource PrimaryButtonStyle}" Click="AddSource_Click"/>
+                                        <Button Content="Sil" Style="{StaticResource SecondaryButtonStyle}" Click="RemoveSource_Click"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="TargetsPanel" Visibility="Collapsed">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Hedef klasörler" FontSize="18" FontWeight="SemiBold"/>
+                                <ListBox x:Name="TargetsList" Height="170" Margin="0,12,0,12"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TargetPathBox"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+                                        <Button Content="Seç" Style="{StaticResource SecondaryButtonStyle}" Click="BrowseTarget_Click"/>
+                                        <Button Content="Ekle" Style="{StaticResource PrimaryButtonStyle}" Click="AddTarget_Click"/>
+                                        <Button Content="Sil" Style="{StaticResource SecondaryButtonStyle}" Click="RemoveTarget_Click"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Rotasyon" FontSize="18" FontWeight="SemiBold"/>
+                                <CheckBox x:Name="RetentionEnabledCheck" Content="Eski yedekleri otomatik temizle" Margin="0,14,0,10"/>
+                                <UniformGrid Columns="2">
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="Saklama günü" Foreground="{StaticResource Muted}"/>
+                                        <TextBox x:Name="KeepDaysBox" Text="30"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Maksimum toplam boyut (GB)" Foreground="{StaticResource Muted}"/>
+                                        <TextBox x:Name="MaxGbBox" Text="50"/>
+                                    </StackPanel>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="SchedulePanel" Visibility="Collapsed">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Periyodik zamanlama" FontSize="18" FontWeight="SemiBold"/>
+                                <CheckBox x:Name="ScheduleEnabledCheck" Content="Zamanlama aktif" Margin="0,14,0,12"/>
+                                <UniformGrid Columns="7">
+                                    <CheckBox x:Name="DayMondayCheck" Content="Pzt"/>
+                                    <CheckBox x:Name="DayTuesdayCheck" Content="Sal"/>
+                                    <CheckBox x:Name="DayWednesdayCheck" Content="Çar"/>
+                                    <CheckBox x:Name="DayThursdayCheck" Content="Per"/>
+                                    <CheckBox x:Name="DayFridayCheck" Content="Cum"/>
+                                    <CheckBox x:Name="DaySaturdayCheck" Content="Cmt"/>
+                                    <CheckBox x:Name="DaySundayCheck" Content="Paz"/>
+                                </UniformGrid>
+                                <ListBox x:Name="ScheduleTimesList" Height="120" Margin="0,16,0,12"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox x:Name="NewTimeBox" Width="110" Text="18:00"/>
+                                    <Button Content="Saat Ekle" Style="{StaticResource PrimaryButtonStyle}" Click="AddScheduleTime_Click"/>
+                                    <Button Content="Saat Sil" Style="{StaticResource SecondaryButtonStyle}" Click="RemoveScheduleTime_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="CloudPanel" Visibility="Collapsed">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Google Cloud Storage" FontSize="18" FontWeight="SemiBold"/>
+                                <CheckBox x:Name="CloudEnabledCheck" Content="Bulut yedekleme aktif" Margin="0,14,0,8"/>
+                                <CheckBox x:Name="UploadAfterBackupCheck" Content="Yedekten sonra buluta yükle" Margin="0,0,0,8"/>
+                                <CheckBox x:Name="DeleteLocalAfterUploadCheck" Content="Başarılı bulut yüklemesinden sonra yerel ZIP dosyasını sil" Margin="0,0,0,14"/>
+                                <UniformGrid Columns="2">
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="Bucket adı" Foreground="{StaticResource Muted}"/>
+                                        <TextBox x:Name="BucketBox"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Klasör prefix" Foreground="{StaticResource Muted}"/>
+                                        <TextBox x:Name="PrefixBox" Text="yedekler"/>
+                                    </StackPanel>
+                                </UniformGrid>
+                                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                    <Button Content="Service Account JSON İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportGoogleKey_Click"/>
+                                    <Button Content="Bağlantıyı Test Et" Style="{StaticResource PrimaryButtonStyle}" Click="TestCloud_Click"/>
+                                </StackPanel>
+                                <TextBlock x:Name="GoogleKeyStatusText" Text="Google key yüklenmedi." Foreground="{StaticResource Muted}" Margin="0,12,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="SecurityPanel" Visibility="Collapsed">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Şifreli secret dosyası" FontSize="18" FontWeight="SemiBold"/>
+                                <TextBlock Text="Mail parolası, ZIP parolası ve Google key içeriği secrets.dat içinde Windows kullanıcı hesabına bağlı olarak şifrelenir." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,16"/>
+                                <UniformGrid Columns="2">
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="Mail parolası" Foreground="{StaticResource Muted}"/>
+                                        <PasswordBox x:Name="MailPasswordBox"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="ZIP parola notu" Foreground="{StaticResource Muted}"/>
+                                        <PasswordBox x:Name="ZipPasswordBox"/>
+                                    </StackPanel>
+                                </UniformGrid>
+                                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                    <Button Content="Secret Kaydet" Style="{StaticResource PrimaryButtonStyle}" Click="SaveSecrets_Click"/>
+                                </StackPanel>
+                                <TextBlock x:Name="SecretStatusText" Text="Secret durumu bekleniyor." Foreground="{StaticResource Muted}" Margin="0,12,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="LicensePanel" Visibility="Collapsed">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Lisans" FontSize="18" FontWeight="SemiBold"/>
+                                <TextBlock Text="Size verilen manuel lisans anahtarini girin. Key ilk aktivasyonda bu bilgisayara baglanir ve sure o anda baslar." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,16"/>
+                                <CheckBox x:Name="LicenseRequiredCheck" Content="Lisans olmadan yedeklemeyi kilitle" Margin="0,0,0,12"/>
+                                <UniformGrid Columns="2">
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="License API URL" Foreground="{StaticResource Muted}"/>
+                                        <TextBox x:Name="LicenseApiUrlBox" Text="http://localhost:5088"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Email" Foreground="{StaticResource Muted}"/>
+                                        <TextBox x:Name="LicenseEmailBox"/>
+                                    </StackPanel>
+                                </UniformGrid>
+                                <TextBlock Text="Lisans anahtari" Foreground="{StaticResource Muted}" Margin="0,14,0,0"/>
+                                <TextBox x:Name="LicenseKeyBox"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                    <Button Content="Aktiflestir" Style="{StaticResource PrimaryButtonStyle}" Click="ActivateLicense_Click"/>
+                                    <Button Content="Dogrula" Style="{StaticResource SecondaryButtonStyle}" Click="ValidateLicense_Click"/>
+                                    <Button Content="API Test" Style="{StaticResource SecondaryButtonStyle}" Click="TestLicenseApi_Click"/>
+                                </StackPanel>
+                                <TextBlock x:Name="LicenseStateText" Text="Lisans durumu bekleniyor." Foreground="{StaticResource Ink}" FontWeight="SemiBold" Margin="0,14,0,0"/>
+                                <TextBlock x:Name="LicenseDetailText" Text="Henuz lisans dogrulanmadi." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="LogsPanel" Visibility="Collapsed">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Loglar" FontSize="18" FontWeight="SemiBold"/>
+                                <ListBox x:Name="LogsList" Height="330" Margin="0,12,0,12" SelectionChanged="LogsList_SelectionChanged"/>
+                                <TextBox x:Name="LogDetailBox" Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" IsReadOnly="True"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button Content="Yenile" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshLogs_Click"/>
+                                    <Button Content="Logları Sil" Style="{StaticResource SecondaryButtonStyle}" Click="ClearLogs_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="SettingsPanel" Visibility="Collapsed">
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Genel ayarlar" FontSize="18" FontWeight="SemiBold"/>
+                                <TextBlock Text="Profil adı" Foreground="{StaticResource Muted}" Margin="0,14,0,0"/>
+                                <TextBox x:Name="ProfileNameBox"/>
+                                <CheckBox x:Name="ZipEnabledCheck" Content="ZIP formatında yedekle" Margin="0,14,0,8"/>
+                                <TextBlock Text="Eski yedekaldat.ini yolu" Foreground="{StaticResource Muted}" Margin="0,10,0,0"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="ImportPathBox" Text="D:\yedek_kopya\yedekaldat.ini"/>
+                                    <Button Grid.Column="1" Content="İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportLegacy_Click" Margin="8,0,0,0"/>
+                                </Grid>
+                                <TextBlock x:Name="SettingsPathText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,16,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+
+            <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0">
+                <Grid Margin="24,0">
+                    <TextBlock x:Name="StatusBarText" Text="Hazır" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

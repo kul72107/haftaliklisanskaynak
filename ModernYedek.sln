@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{F8F89B6E-79AF-40EC-A56C-02AE9432C95F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModernYedek.Tests", "tests\ModernYedek.Tests\ModernYedek.Tests.csproj", "{DFC0F1F8-E799-4A79-A201-42D19313CC2A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0803F287-8C77-4E7F-804B-C6EFE940032E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModernYedek.Core", "src\ModernYedek.Core\ModernYedek.Core.csproj", "{4FCD2F0F-64B6-46FE-A545-454F059E345F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModernYedek.App", "src\ModernYedek.App\ModernYedek.App.csproj", "{2014EDEB-54BC-4511-9CB3-D6723CDBD9C7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModernYedek.LicenseApi", "src\ModernYedek.LicenseApi\ModernYedek.LicenseApi.csproj", "{9FA9C742-9141-4660-8BD1-32DB4BBDE8E4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DFC0F1F8-E799-4A79-A201-42D19313CC2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFC0F1F8-E799-4A79-A201-42D19313CC2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFC0F1F8-E799-4A79-A201-42D19313CC2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFC0F1F8-E799-4A79-A201-42D19313CC2A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4FCD2F0F-64B6-46FE-A545-454F059E345F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FCD2F0F-64B6-46FE-A545-454F059E345F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4FCD2F0F-64B6-46FE-A545-454F059E345F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FCD2F0F-64B6-46FE-A545-454F059E345F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2014EDEB-54BC-4511-9CB3-D6723CDBD9C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2014EDEB-54BC-4511-9CB3-D6723CDBD9C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2014EDEB-54BC-4511-9CB3-D6723CDBD9C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2014EDEB-54BC-4511-9CB3-D6723CDBD9C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9FA9C742-9141-4660-8BD1-32DB4BBDE8E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9FA9C742-9141-4660-8BD1-32DB4BBDE8E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9FA9C742-9141-4660-8BD1-32DB4BBDE8E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9FA9C742-9141-4660-8BD1-32DB4BBDE8E4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{DFC0F1F8-E799-4A79-A201-42D19313CC2A} = {F8F89B6E-79AF-40EC-A56C-02AE9432C95F}
+		{4FCD2F0F-64B6-46FE-A545-454F059E345F} = {0803F287-8C77-4E7F-804B-C6EFE940032E}
+		{2014EDEB-54BC-4511-9CB3-D6723CDBD9C7} = {0803F287-8C77-4E7F-804B-C6EFE940032E}
+		{9FA9C742-9141-4660-8BD1-32DB4BBDE8E4} = {0803F287-8C77-4E7F-804B-C6EFE940032E}
+	EndGlobalSection
+EndGlobal

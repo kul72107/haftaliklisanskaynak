@@ -1,0 +1,16 @@
+bin/
+obj/
+publish/
+.vs/
+.vscode/
+*.user
+*.suo
+*.tmp
+*.log
+*.zip
+App_Data/
+licenses.json
+lemon-webhooks.jsonl
+secrets.dat
+logs.jsonl
+settings.json
