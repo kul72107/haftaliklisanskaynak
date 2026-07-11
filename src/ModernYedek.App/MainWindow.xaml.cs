@@ -4,6 +4,7 @@ using System.IO;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using ModernYedek.Core.Backup;
@@ -199,6 +200,66 @@ public partial class MainWindow : Window
     {
         StatusBarText.Text = message;
         System.Windows.MessageBox.Show(this, message, title, MessageBoxButton.OK, image);
+    }
+
+    private void TooltipsEnabledCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded)
+        {
+            return;
+        }
+
+        var enabled = TooltipsEnabledCheck.IsChecked == true;
+        SetTooltipsEnabled(enabled);
+        StatusBarText.Text = enabled
+            ? "Açıklama kutuları açıldı."
+            : "Açıklama kutuları kapatıldı.";
+    }
+
+    private void SetTooltipsEnabled(bool enabled)
+    {
+        ApplyTooltipsEnabled(this, enabled, new HashSet<DependencyObject>());
+        ToolTipService.SetIsEnabled(TooltipsEnabledCheck, true);
+    }
+
+    private void ApplyTooltipsEnabled(DependencyObject current, bool enabled, HashSet<DependencyObject> visited)
+    {
+        if (!visited.Add(current))
+        {
+            return;
+        }
+
+        if (current is FrameworkElement element
+            && !ReferenceEquals(element, TooltipsEnabledCheck)
+            && element.ToolTip is not null)
+        {
+            ToolTipService.SetIsEnabled(element, enabled);
+        }
+
+        var visualChildren = 0;
+        try
+        {
+            visualChildren = VisualTreeHelper.GetChildrenCount(current);
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        for (var i = 0; i < visualChildren; i++)
+        {
+            ApplyTooltipsEnabled(VisualTreeHelper.GetChild(current, i), enabled, visited);
+        }
+
+        if (current is FrameworkElement frameworkElement)
+        {
+            foreach (var child in LogicalTreeHelper.GetChildren(frameworkElement))
+            {
+                if (child is DependencyObject dependencyObject)
+                {
+                    ApplyTooltipsEnabled(dependencyObject, enabled, visited);
+                }
+            }
+        }
     }
 
     private async void SaveSettings_Click(object sender, RoutedEventArgs e)
@@ -993,6 +1054,7 @@ public partial class MainWindow : Window
             LicenseStateText.Text = "Lisans yok";
             LicenseDetailText.Text = "Lisans anahtari henuz aktiflestirilmedi.";
             UpdateLicenseBanner(hasActiveLicense: false);
+            UpdateLicenseRemainingText(null);
             return;
         }
 
@@ -1025,11 +1087,13 @@ public partial class MainWindow : Window
         DashboardStatusText.Text = "Lisans gerekli";
         StatusBarText.Text = detail;
         UpdateLicenseBanner(hasActiveLicense: false);
+        UpdateLicenseRemainingText(null);
     }
 
     private void UpdateLicenseUi(LicenseValidationResult result)
     {
         UpdateLicenseBanner(result.IsValid);
+        UpdateLicenseRemainingText(result);
         LicenseStateText.Text = result.IsValid
             ? $"Lisans aktif: {result.State}"
             : $"Lisans gecersiz: {result.State}";
@@ -1050,6 +1114,32 @@ public partial class MainWindow : Window
         LicenseBannerTitleText.Text = hasActiveLicense
             ? LicenseUpgradeBannerTitle
             : LicenseRequiredBannerTitle;
+    }
+
+    private void UpdateLicenseRemainingText(LicenseValidationResult? result)
+    {
+        if (result?.IsValid != true)
+        {
+            LicenseRemainingText.Text = "Lisans: yok";
+            return;
+        }
+
+        var paidUntil = result.PaidUntil ?? result.OfflineUntil;
+        if (paidUntil is null)
+        {
+            LicenseRemainingText.Text = "Lisans: aktif";
+            return;
+        }
+
+        var remaining = paidUntil.Value - DateTimeOffset.UtcNow;
+        if (remaining <= TimeSpan.Zero)
+        {
+            LicenseRemainingText.Text = "Lisans: süre doldu";
+            return;
+        }
+
+        var days = Math.Max(1, (int)Math.Ceiling(remaining.TotalDays));
+        LicenseRemainingText.Text = $"Lisans: {days} gün kaldı";
     }
 
     private async void RefreshLogs_Click(object sender, RoutedEventArgs e)

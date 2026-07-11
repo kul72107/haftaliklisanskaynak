@@ -245,7 +245,7 @@
                                     <TextBlock x:Name="ErrorSummaryText" Text="Kritik hata yok." Margin="0,8,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" ToolTip="Son işlemde oluşan önemli hata mesajlarının kısa özeti."/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                                    <Button Content="Eski INI İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportLegacy_Click" ToolTip="Eski yedekaldat.ini dosyasındaki kaynak, hedef ve zamanlama ayarlarını yeni uygulamaya taşır."/>
+                                    <Button Content="Eski kaydedilmiş ayarları içe aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportLegacy_Click" ToolTip="Eski yedekaldat.ini dosyasındaki kaynak, hedef ve zamanlama ayarlarını yeni uygulamaya taşır."/>
                                     <Button Content="Logları Yenile" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshLogs_Click" ToolTip="Log listesini dosyadan yeniden okur ve ekrandaki kayıtları günceller."/>
                                 </StackPanel>
                             </Grid>
@@ -449,9 +449,21 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="1" Text="WhatsApp iletişim: 05300221838" VerticalAlignment="Center" Foreground="#128C4A" FontWeight="Bold" Margin="16,0,0,0" ToolTip="Lisans veya destek için WhatsApp iletişim numarası."/>
                     <TextBlock x:Name="StatusBarText" Text="Hazır" VerticalAlignment="Center" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis" ToolTip="Son işlem durumu ve kısa bilgilendirme mesajları burada görünür."/>
+                    <TextBlock x:Name="LicenseRemainingText" Grid.Column="1" Text="Lisans: yok" VerticalAlignment="Center" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Margin="18,0,0,0" ToolTip="Sahip olunan aktif lisanstan kaç gün kaldığını gösterir."/>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
+                        <TextBlock Text="WhatsApp iletişim: 05300221838" VerticalAlignment="Center" Foreground="#128C4A" FontWeight="Bold" ToolTip="Lisans veya destek için WhatsApp iletişim numarası."/>
+                        <CheckBox x:Name="TooltipsEnabledCheck"
+                                  Content="Açıklamalar"
+                                  IsChecked="True"
+                                  Checked="TooltipsEnabledCheck_Changed"
+                                  Unchecked="TooltipsEnabledCheck_Changed"
+                                  VerticalAlignment="Center"
+                                  Margin="18,0,0,0"
+                                  ToolTip="Açıklama kutularını açıp kapatır. Kapalıyken buton ve alan açıklamaları görünmez."/>
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>
