@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Modern Yedek Lisans Paneli</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eef2f7;
+      --panel: #ffffff;
+      --ink: #162033;
+      --muted: #5e6b7d;
+      --line: #d9e0ea;
+      --primary: #185adb;
+      --primary-dark: #1145a8;
+      --good: #0f7b4f;
+      --warn: #9a5b00;
+      --danger: #b42318;
+      --field: #f8fafc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, #f7f9fc 0%, var(--bg) 44%, #e9eef5 100%);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    h1, h2, p { margin: 0; }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 16px;
+      margin-bottom: 14px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+      gap: 18px;
+      padding: 18px;
+      max-width: 1380px;
+      margin: 0 auto;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 12px 28px rgba(22, 32, 51, 0.08);
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--field);
+      color: var(--ink);
+      font: inherit;
+      font-size: 14px;
+      padding: 10px 11px;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(24, 90, 219, 0.14);
+    }
+
+    textarea {
+      min-height: 108px;
+      resize: vertical;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      line-height: 1.45;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 13px;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #e7ecf4;
+      color: var(--ink);
+    }
+
+    button.primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    button.primary:hover { background: var(--primary-dark); }
+    button:hover { filter: brightness(0.97); }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .status {
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      border-radius: 6px;
+      padding: 9px 11px;
+      background: #edf7f2;
+      color: var(--good);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status.warn {
+      background: #fff6e5;
+      color: var(--warn);
+    }
+
+    .status.error {
+      background: #fff0ee;
+      color: var(--danger);
+    }
+
+    .output-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: var(--muted);
+      background: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .right {
+      display: grid;
+      gap: 18px;
+    }
+
+    @media (max-width: 920px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 16px;
+      }
+
+      main {
+        grid-template-columns: 1fr;
+        padding: 12px;
+      }
+
+      .grid2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Modern Yedek Lisans Paneli</h1>
+      <p class="small">Key uret, hash al, lisans satirini hazirla.</p>
+    </div>
+    <div class="pill" id="fileState">licenses.txt yukleniyor</div>
+  </header>
+
+  <main>
+    <section class="stack">
+      <h2>Yeni lisans</h2>
+
+      <label>
+        Lisans key
+        <input id="licenseKey" autocomplete="off" spellcheck="false" placeholder="MY-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX">
+      </label>
+
+      <div class="actions">
+        <button type="button" id="generateKey">Key Uret</button>
+        <button type="button" id="copyKey">Key Kopyala</button>
+      </div>
+
+      <div class="grid2">
+        <label>
+          Sure
+          <select id="durationDays">
+            <option value="7" selected>7 gun</option>
+            <option value="14">14 gun</option>
+            <option value="30">30 gun</option>
+            <option value="90">90 gun</option>
+            <option value="365">365 gun</option>
+          </select>
+        </label>
+
+        <label>
+          Durum
+          <select id="licenseStatus">
+            <option value="active" selected>active</option>
+            <option value="paused">paused</option>
+            <option value="revoked">revoked</option>
+          </select>
+        </label>
+      </div>
+
+      <label>
+        Not
+        <input id="licenseNote" autocomplete="off" placeholder="musteri adi veya odeme notu">
+      </label>
+
+      <div class="actions">
+        <button type="button" class="primary" id="buildEntry">Lisans Satiri Hazirla</button>
+        <button type="button" id="clearForm">Temizle</button>
+      </div>
+
+      <div id="statusBox" class="status warn">Key gir veya yeni key uret.</div>
+    </section>
+
+    <div class="right">
+      <section>
+        <h2>Cikti</h2>
+
+        <div class="output-title">
+          <span>SHA256 hash</span>
+          <button type="button" id="copyHash">Kopyala</button>
+        </div>
+        <textarea id="hashOutput" readonly></textarea>
+
+        <div class="output-title">
+          <span>licenses.txt satiri</span>
+          <button type="button" id="copyLine">Kopyala</button>
+        </div>
+        <textarea id="lineOutput" readonly></textarea>
+
+        <div class="output-title">
+          <span>JSON kaydi</span>
+          <button type="button" id="copyJson">Kopyala</button>
+        </div>
+        <textarea id="jsonOutput" readonly></textarea>
+      </section>
+
+      <section>
+        <h2>Guncel licenses.txt</h2>
+        <p class="small">Bu alan mevcut dosyayi okur ve hazirlanan satiri sona ekler. Degisikligi GitHub'da `docs/licenses.txt` dosyasina yapistir.</p>
+        <textarea id="fullTxtOutput" spellcheck="false"></textarea>
+        <div class="actions">
+          <button type="button" id="copyFullTxt">Tum Dosyayi Kopyala</button>
+          <button type="button" id="reloadTxt">Tekrar Yukle</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Iptal hash</h2>
+        <p class="small">Key iptali icin hash uretip `revoked.txt` dosyasina tek satir olarak ekle.</p>
+        <div class="actions">
+          <button type="button" id="buildRevoke">Iptal Hashi Uret</button>
+          <button type="button" id="copyRevoke">Kopyala</button>
+        </div>
+        <textarea id="revokeOutput" readonly></textarea>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    const state = {
+      currentTxt: "",
+      lastLine: ""
+    };
+
+    function normalizeKey(value) {
+      return value.trim().toUpperCase();
+    }
+
+    function cleanNote(value) {
+      return value.trim().replace(/[|\r\n]+/g, " ").slice(0, 80);
+    }
+
+    function setStatus(message, kind) {
+      const box = el("statusBox");
+      box.textContent = message;
+      box.className = "status" + (kind ? " " + kind : "");
+    }
+
+    async function sha256Hex(text) {
+      const bytes = new TextEncoder().encode(text);
+      const buffer = await crypto.subtle.digest("SHA-256", bytes);
+      return Array.from(new Uint8Array(buffer))
+        .map((value) => value.toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase();
+    }
+
+    function randomGroup() {
+      const bytes = new Uint8Array(2);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes)
+        .map((value) => value.toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase();
+    }
+
+    function buildRandomKey() {
+      return ["MY", randomGroup(), randomGroup(), randomGroup(), randomGroup(), randomGroup(), randomGroup()].join("-");
+    }
+
+    async function copyText(value, label) {
+      if (!value.trim()) {
+        setStatus(label + " bos.", "warn");
+        return;
+      }
+
+      await navigator.clipboard.writeText(value);
+      setStatus(label + " kopyalandi.", "");
+    }
+
+    async function loadCurrentTxt() {
+      const fileState = el("fileState");
+      try {
+        const response = await fetch("../licenses.txt", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+
+        state.currentTxt = await response.text();
+        el("fullTxtOutput").value = state.currentTxt;
+        const activeLines = state.currentTxt.split(/\r?\n/)
+          .filter((line) => line.trim() && !line.trim().startsWith("#")).length;
+        fileState.textContent = "licenses.txt hazir: " + activeLines + " kayit";
+      } catch (error) {
+        state.currentTxt = "";
+        el("fullTxtOutput").value = "";
+        fileState.textContent = "licenses.txt okunamadi";
+        setStatus("licenses.txt okunamadi: " + error.message, "error");
+      }
+    }
+
+    function refreshFullTxt() {
+      if (!state.lastLine) {
+        el("fullTxtOutput").value = state.currentTxt;
+        return;
+      }
+
+      const base = state.currentTxt.trimEnd();
+      el("fullTxtOutput").value = (base ? base + "\n" : "") + state.lastLine + "\n";
+    }
+
+    async function buildEntry() {
+      const key = normalizeKey(el("licenseKey").value);
+      if (!key) {
+        setStatus("Once lisans key gir veya uret.", "warn");
+        return;
+      }
+
+      const hash = await sha256Hex(key);
+      const durationDays = Number(el("durationDays").value);
+      const status = el("licenseStatus").value;
+      const note = cleanNote(el("licenseNote").value);
+      const line = [hash, durationDays, status, note].join("|");
+      const json = {
+        hash,
+        durationDays,
+        status,
+        note
+      };
+
+      state.lastLine = line;
+      el("hashOutput").value = hash;
+      el("lineOutput").value = line;
+      el("jsonOutput").value = JSON.stringify(json, null, 2);
+      refreshFullTxt();
+      setStatus("Lisans satiri hazirlandi.", "");
+    }
+
+    async function buildRevoke() {
+      const key = normalizeKey(el("licenseKey").value);
+      if (!key) {
+        setStatus("Iptal hash icin once key gir.", "warn");
+        return;
+      }
+
+      el("revokeOutput").value = await sha256Hex(key);
+      setStatus("Iptal hash hazirlandi.", "");
+    }
+
+    el("generateKey").addEventListener("click", () => {
+      el("licenseKey").value = buildRandomKey();
+      setStatus("Yeni key uretildi.", "");
+    });
+
+    el("copyKey").addEventListener("click", () => copyText(el("licenseKey").value, "Key"));
+    el("buildEntry").addEventListener("click", buildEntry);
+    el("clearForm").addEventListener("click", () => {
+      el("licenseKey").value = "";
+      el("licenseNote").value = "";
+      el("hashOutput").value = "";
+      el("lineOutput").value = "";
+      el("jsonOutput").value = "";
+      el("revokeOutput").value = "";
+      state.lastLine = "";
+      refreshFullTxt();
+      setStatus("Form temizlendi.", "");
+    });
+
+    el("copyHash").addEventListener("click", () => copyText(el("hashOutput").value, "Hash"));
+    el("copyLine").addEventListener("click", () => copyText(el("lineOutput").value, "TXT satiri"));
+    el("copyJson").addEventListener("click", () => copyText(el("jsonOutput").value, "JSON kaydi"));
+    el("copyFullTxt").addEventListener("click", () => copyText(el("fullTxtOutput").value, "Tum licenses.txt"));
+    el("reloadTxt").addEventListener("click", loadCurrentTxt);
+    el("buildRevoke").addEventListener("click", buildRevoke);
+    el("copyRevoke").addEventListener("click", () => copyText(el("revokeOutput").value, "Iptal hash"));
+
+    loadCurrentTxt();
+  </script>
+</body>
+</html>

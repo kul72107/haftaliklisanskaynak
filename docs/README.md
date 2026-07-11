@@ -14,10 +14,15 @@ Guvenlik kurallari:
 GitHub Pages `main` branch ve `/docs` klasorunden acilinca dosya URL'leri:
 
 ```txt
+https://kul72107.github.io/haftaliklisanskaynak/admin/
 https://kul72107.github.io/haftaliklisanskaynak/licenses.txt
 https://kul72107.github.io/haftaliklisanskaynak/licenses.json
 https://kul72107.github.io/haftaliklisanskaynak/revoked.txt
 ```
+
+`admin/` paneli key uretir, SHA256 hash hesaplar ve `licenses.txt` satiri hazirlar.
+GitHub Pages statik oldugu icin panel dosyayi otomatik kaydetmez; uretilen satir GitHub'da
+`docs/licenses.txt` dosyasina elle yapistirilir.
 
 ## TXT formati
 
@@ -42,4 +47,3 @@ PowerShell:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\docs\tools\hash-key.ps1 "MY-ORNEK-KEY"
 ```
-
