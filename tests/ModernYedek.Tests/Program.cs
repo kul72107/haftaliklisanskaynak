@@ -377,6 +377,8 @@ static async Task TestPremiumVisualAssetSet()
     Assert(xaml.Contains("myedek-icon-master.png", StringComparison.OrdinalIgnoreCase), "master icon visible in sidebar");
     Assert(xaml.Contains("premium-header-banner.png", StringComparison.OrdinalIgnoreCase), "header asset referenced");
     Assert(xaml.Contains("premium-sidebar-texture.png", StringComparison.OrdinalIgnoreCase), "sidebar asset referenced");
+    Assert(xaml.Contains("AlignmentX=\"Right\"", StringComparison.OrdinalIgnoreCase), "sidebar texture focus aligned right");
+    Assert(xaml.Contains("Background=\"#920F071C\"", StringComparison.OrdinalIgnoreCase), "sidebar texture overlay visible");
     Assert(xaml.Contains("empty-sources.png", StringComparison.OrdinalIgnoreCase), "sources empty art referenced");
     Assert(xaml.Contains("empty-targets.png", StringComparison.OrdinalIgnoreCase), "targets empty art referenced");
     Assert(xaml.Contains("empty-logs.png", StringComparison.OrdinalIgnoreCase), "logs empty art referenced");
@@ -413,9 +415,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.21",
+              "version": "1.0.22",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.21.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.22.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -427,16 +429,16 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.21", "update version");
+    Assert(result.Manifest.Version == "1.0.22", "update version");
 }
 
 static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 {
     var root = CreateTempRoot();
-    var url = "https://updates.test/releases/ModernYedek-1.0.21.zip";
+    var url = "https://updates.test/releases/ModernYedek-1.0.22.zip";
     var payload = "fake update payload";
     var sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
-    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.21.zip");
+    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.22.zip");
     await File.WriteAllTextAsync(staleZipPath, "locked old file");
 
     await using var locked = new FileStream(staleZipPath, FileMode.Open, FileAccess.Read, FileShare.None);
@@ -447,14 +449,14 @@ static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 
     var path = await new UpdateClient(http).DownloadAndVerifyAsync(new UpdateManifest
     {
-        Version = "1.0.21",
+        Version = "1.0.22",
         Url = url,
         Sha256 = sha256
     }, root);
 
     Assert(File.Exists(path), "downloaded update exists");
     Assert(!string.Equals(path, staleZipPath, StringComparison.OrdinalIgnoreCase), "download path is unique");
-    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.21-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
+    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.22-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
     Assert(!File.Exists(path + ".download"), "partial download renamed");
 }
 

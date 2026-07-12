@@ -175,9 +175,12 @@
 
         <Border Grid.Column="0" ToolTip="Sol menü. Uygulamanın farklı ayar ve izleme sayfalarına buradan geçersiniz.">
             <Border.Background>
-                <ImageBrush ImageSource="pack://application:,,,/Assets/premium-sidebar-texture.png" Stretch="UniformToFill"/>
+                <ImageBrush ImageSource="pack://application:,,,/Assets/premium-sidebar-texture.png"
+                            Stretch="UniformToFill"
+                            AlignmentX="Right"
+                            AlignmentY="Top"/>
             </Border.Background>
-            <DockPanel LastChildFill="True" Background="#D80F071C">
+            <DockPanel LastChildFill="True" Background="#920F071C">
                 <StackPanel DockPanel.Dock="Top" Margin="18,20,18,18">
                     <Image Source="pack://application:,,,/Assets/myedek-icon-master.png" Width="54" Height="54" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,0,0,8" ToolTip="MYedek uygulama ikonu."/>
                     <TextBlock Text="MYedek" Foreground="White" FontSize="23" FontWeight="Bold" Effect="{StaticResource SidebarTextOutlineEffect}" ToolTip="Uygulamanın ana adı. Bu araç dosya ve klasörlerinizi yedeklemek için kullanılır."/>
