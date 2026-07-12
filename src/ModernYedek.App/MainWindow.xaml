@@ -9,7 +9,7 @@
     <Window.Resources>
         <SolidColorBrush x:Key="Ink" Color="#21172F"/>
         <SolidColorBrush x:Key="Muted" Color="#71647F"/>
-        <SolidColorBrush x:Key="Panel" Color="#FFFCFF"/>
+        <SolidColorBrush x:Key="Panel" Color="#F6FFFCFF"/>
         <SolidColorBrush x:Key="Line" Color="#E6DDF4"/>
         <SolidColorBrush x:Key="Accent" Color="#6E3FD1"/>
         <SolidColorBrush x:Key="AccentGreen" Color="#25D366"/>
@@ -109,6 +109,22 @@
             <Setter Property="VerticalAlignment" Value="Top"/>
         </Style>
 
+        <Style x:Key="PageLeadIconStyle" TargetType="Image">
+            <Setter Property="Width" Value="48"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="MiniSignalIconStyle" TargetType="Image">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
         <Style TargetType="TextBox">
             <Setter Property="Height" Value="34"/>
             <Setter Property="Padding" Value="9,6"/>
@@ -162,7 +178,8 @@
                 <ImageBrush ImageSource="pack://application:,,,/Assets/premium-sidebar-texture.png" Stretch="UniformToFill"/>
             </Border.Background>
             <DockPanel LastChildFill="True" Background="#D80F071C">
-                <StackPanel DockPanel.Dock="Top" Margin="18,22,18,18">
+                <StackPanel DockPanel.Dock="Top" Margin="18,20,18,18">
+                    <Image Source="pack://application:,,,/Assets/myedek-icon-master.png" Width="54" Height="54" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,0,0,8" ToolTip="MYedek uygulama ikonu."/>
                     <TextBlock Text="MYedek" Foreground="White" FontSize="23" FontWeight="Bold" Effect="{StaticResource SidebarTextOutlineEffect}" ToolTip="Uygulamanın ana adı. Bu araç dosya ve klasörlerinizi yedeklemek için kullanılır."/>
                     <TextBlock Text="ResurrectSoft" Foreground="#25D366" FontSize="13" FontWeight="SemiBold" Margin="0,4,0,0" ToolTip="MYedek uygulamasını geliştiren yazılım markası."/>
                     <TextBlock Text="ZIP, zamanlama ve bulut" Foreground="#A8B4C7" FontSize="12" Margin="0,5,0,0" ToolTip="Uygulama ZIP yedekleri oluşturabilir, zamanlayabilir ve isterseniz buluta yükleyebilir."/>
@@ -193,7 +210,7 @@
                 <RowDefinition Height="44"/>
             </Grid.RowDefinitions>
 
-            <Rectangle Grid.Row="1" IsHitTestVisible="False" Opacity="0.10">
+            <Rectangle Grid.Row="1" IsHitTestVisible="False" Opacity="0.18">
                 <Rectangle.Fill>
                     <ImageBrush ImageSource="pack://application:,,,/Assets/premium-pattern.png"
                                 TileMode="Tile"
@@ -327,7 +344,29 @@
                                     <TextBlock x:Name="LastArchiveText" Text="Henüz yedek alınmadı." Margin="0,12,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" ToolTip="Son oluşturulan ZIP dosyasının yolu, SHA256 hash değeri ve dosya boyutu burada görünür."/>
                                     <TextBlock x:Name="ErrorSummaryText" Text="Kritik hata yok." Margin="0,8,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" ToolTip="Son işlemde oluşan önemli hata mesajlarının kısa özeti."/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                <StackPanel Grid.Column="1" Margin="24,0,0,0">
+                                    <Grid Margin="0,0,0,8" ToolTip="Uyari gerektiren yedekleme durumlarini gosterir.">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Image Source="pack://application:,,,/Assets/icon-backup-warning.png" Style="{StaticResource MiniSignalIconStyle}" ToolTip="Yedekleme uyari ikonu."/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Uyari takibi" Foreground="{StaticResource Ink}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Kismi yedek ve izin sorunlari burada one cikar." Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,10" ToolTip="Basarisiz yedekleme ve kritik hata durumlarini gosterir.">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Image Source="pack://application:,,,/Assets/icon-backup-failed.png" Style="{StaticResource MiniSignalIconStyle}" ToolTip="Yedekleme hata ikonu."/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Hata takibi" Foreground="{StaticResource Ink}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Kaynak, hedef ve ZIP hatalari loglarda ayrintilanir." Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
                                     <Button Content="Eski kaydedilmiş ayarları içe aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportLegacy_Click" ToolTip="Eski yedekaldat.ini dosyasındaki kaynak, hedef ve zamanlama ayarlarını yeni uygulamaya taşır."/>
                                     <Button Content="Logları Yenile" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshLogs_Click" ToolTip="Log listesini dosyadan yeniden okur ve ekrandaki kayıtları günceller."/>
                                 </StackPanel>
@@ -456,6 +495,7 @@
                     </StackPanel>
 
                     <StackPanel x:Name="SecurityPanel" Visibility="Collapsed">
+                        <Image Source="pack://application:,,,/Assets/icon-encrypted-secrets.png" Width="58" Height="58" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,0,0,10" ToolTip="Sifreli secret ikonu."/>
                         <Border Style="{StaticResource CardStyle}" ToolTip="Hassas bilgiler Windows kullanıcınıza bağlı şekilde şifrelenerek saklanır.">
                             <StackPanel>
                                 <TextBlock Text="Şifreli secret dosyası" FontSize="18" FontWeight="SemiBold" ToolTip="Parola ve key gibi hassas veriler normal ayar dosyasına değil, şifreli secrets.dat dosyasına yazılır."/>
@@ -479,6 +519,7 @@
                     </StackPanel>
 
                     <StackPanel x:Name="LicensePanel" Visibility="Collapsed">
+                        <Image Source="pack://application:,,,/Assets/icon-license-key.png" Width="58" Height="58" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,0,0,10" ToolTip="Lisans anahtari ikonu."/>
                         <Border Style="{StaticResource CardStyle}" ToolTip="Manuel lisans anahtarını etkinleştirme ve mevcut lisans durumunu izleme alanı.">
                             <StackPanel>
                                 <TextBlock Text="Lisans" FontSize="18" FontWeight="SemiBold" ToolTip="Uygulamanın çalışması için kullanılan lisans bilgileri."/>
@@ -564,6 +605,38 @@
                     </StackPanel>
                 </Grid>
             </ScrollViewer>
+
+            <Rectangle Grid.Row="1" IsHitTestVisible="False" Opacity="0.055">
+                <Rectangle.Fill>
+                    <ImageBrush ImageSource="pack://application:,,,/Assets/zippattern.png"
+                                TileMode="Tile"
+                                Viewport="0,0,190,190"
+                                ViewportUnits="Absolute"
+                                Stretch="UniformToFill">
+                        <ImageBrush.Transform>
+                            <TranslateTransform x:Name="ZipPatternAccentBrushTransform"/>
+                        </ImageBrush.Transform>
+                    </ImageBrush>
+                </Rectangle.Fill>
+                <Rectangle.Triggers>
+                    <EventTrigger RoutedEvent="Rectangle.Loaded">
+                        <BeginStoryboard>
+                            <Storyboard RepeatBehavior="Forever">
+                                <DoubleAnimation Storyboard.TargetName="ZipPatternAccentBrushTransform"
+                                                 Storyboard.TargetProperty="X"
+                                                 From="0"
+                                                 To="-190"
+                                                 Duration="0:0:42"/>
+                                <DoubleAnimation Storyboard.TargetName="ZipPatternAccentBrushTransform"
+                                                 Storyboard.TargetProperty="Y"
+                                                 From="0"
+                                                 To="190"
+                                                 Duration="0:0:42"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </Rectangle.Triggers>
+            </Rectangle>
 
             <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" ToolTip="Alt durum çubuğu. Son işlem mesajı ve WhatsApp iletişim numarası burada görünür.">
                 <Grid Margin="24,0">

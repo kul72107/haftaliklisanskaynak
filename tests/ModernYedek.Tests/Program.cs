@@ -322,7 +322,9 @@ static async Task TestAnimatedPatternBackground()
     var xaml = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml"));
     var csproj = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "ModernYedek.App.csproj"));
     Assert(xaml.Contains("Assets/premium-pattern.png", StringComparison.OrdinalIgnoreCase), "pattern brush image");
+    Assert(xaml.Contains("Assets/zippattern.png", StringComparison.OrdinalIgnoreCase), "accent zip pattern image");
     Assert(xaml.Contains("ZipPatternBrushTransform", StringComparison.Ordinal), "pattern animation transform");
+    Assert(xaml.Contains("ZipPatternAccentBrushTransform", StringComparison.Ordinal), "accent pattern animation transform");
     Assert(xaml.Contains("RepeatBehavior=\"Forever\"", StringComparison.OrdinalIgnoreCase), "pattern loops");
     Assert(xaml.Contains("SidebarTextOutlineEffect", StringComparison.Ordinal), "sidebar text outline");
     Assert(csproj.Contains("Assets\\*.png", StringComparison.OrdinalIgnoreCase), "png resources included");
@@ -364,6 +366,11 @@ static async Task TestPremiumVisualAssetSet()
     Assert(xaml.Contains("icon-schedule-clock.png", StringComparison.OrdinalIgnoreCase), "dashboard schedule icon referenced");
     Assert(xaml.Contains("icon-zip-archive.png", StringComparison.OrdinalIgnoreCase), "dashboard zip icon referenced");
     Assert(xaml.Contains("icon-cloud-upload.png", StringComparison.OrdinalIgnoreCase), "dashboard cloud icon referenced");
+    Assert(xaml.Contains("icon-backup-warning.png", StringComparison.OrdinalIgnoreCase), "warning icon referenced");
+    Assert(xaml.Contains("icon-backup-failed.png", StringComparison.OrdinalIgnoreCase), "failed icon referenced");
+    Assert(xaml.Contains("icon-license-key.png", StringComparison.OrdinalIgnoreCase), "license icon referenced");
+    Assert(xaml.Contains("icon-encrypted-secrets.png", StringComparison.OrdinalIgnoreCase), "secrets icon referenced");
+    Assert(xaml.Contains("myedek-icon-master.png", StringComparison.OrdinalIgnoreCase), "master icon visible in sidebar");
     Assert(xaml.Contains("premium-header-banner.png", StringComparison.OrdinalIgnoreCase), "header asset referenced");
     Assert(xaml.Contains("premium-sidebar-texture.png", StringComparison.OrdinalIgnoreCase), "sidebar asset referenced");
     Assert(xaml.Contains("empty-sources.png", StringComparison.OrdinalIgnoreCase), "sources empty art referenced");
@@ -381,7 +388,8 @@ static async Task TestResponsiveVisualConstraints()
     Assert(xaml.Contains("MinWidth=\"1100\"", StringComparison.OrdinalIgnoreCase), "min width below 1366");
     Assert(xaml.Contains("MinHeight=\"720\"", StringComparison.OrdinalIgnoreCase), "min height below 768");
     Assert(xaml.Contains("<ScrollViewer Grid.Row=\"1\" VerticalScrollBarVisibility=\"Auto\">", StringComparison.OrdinalIgnoreCase), "scrollable content");
-    Assert(xaml.Contains("Opacity=\"0.10\"", StringComparison.OrdinalIgnoreCase), "subtle background opacity");
+    Assert(xaml.Contains("Opacity=\"0.18\"", StringComparison.OrdinalIgnoreCase), "visible background opacity");
+    Assert(xaml.Contains("Opacity=\"0.055\"", StringComparison.OrdinalIgnoreCase), "subtle overlay opacity");
     Assert(xaml.Contains("<ColumnDefinition Width=\"236\"/>", StringComparison.OrdinalIgnoreCase), "bounded sidebar width");
     Assert(xaml.Contains("<RowDefinition Height=\"136\"/>", StringComparison.OrdinalIgnoreCase), "bounded header height");
 }
@@ -401,9 +409,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.19",
+              "version": "1.0.20",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.19.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.20.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -415,16 +423,16 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.19", "update version");
+    Assert(result.Manifest.Version == "1.0.20", "update version");
 }
 
 static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 {
     var root = CreateTempRoot();
-    var url = "https://updates.test/releases/ModernYedek-1.0.19.zip";
+    var url = "https://updates.test/releases/ModernYedek-1.0.20.zip";
     var payload = "fake update payload";
     var sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
-    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.19.zip");
+    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.20.zip");
     await File.WriteAllTextAsync(staleZipPath, "locked old file");
 
     await using var locked = new FileStream(staleZipPath, FileMode.Open, FileAccess.Read, FileShare.None);
@@ -435,14 +443,14 @@ static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 
     var path = await new UpdateClient(http).DownloadAndVerifyAsync(new UpdateManifest
     {
-        Version = "1.0.19",
+        Version = "1.0.20",
         Url = url,
         Sha256 = sha256
     }, root);
 
     Assert(File.Exists(path), "downloaded update exists");
     Assert(!string.Equals(path, staleZipPath, StringComparison.OrdinalIgnoreCase), "download path is unique");
-    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.19-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
+    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.20-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
     Assert(!File.Exists(path + ".download"), "partial download renamed");
 }
 
