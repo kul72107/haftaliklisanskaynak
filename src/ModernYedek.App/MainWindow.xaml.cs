@@ -40,8 +40,10 @@ public partial class MainWindow : Window
     private BackupSettings _settings;
     private bool _isRunning;
     private bool _isRevocationCheckRunning;
+    private bool _isForegroundLicenseCheckRunning;
     private bool _isMovingToTray;
     private bool _forceClose;
+    private DateTimeOffset _lastForegroundLicenseCheckAt = DateTimeOffset.MinValue;
     private string? _lastScheduleFireKey;
 
     public MainWindow()
@@ -118,6 +120,12 @@ public partial class MainWindow : Window
         {
             HideToTray(showBalloon: false);
         }
+    }
+
+    protected override void OnActivated(EventArgs e)
+    {
+        base.OnActivated(e);
+        _ = CheckLicenseWhenWindowOpensAsync();
     }
 
     protected override void OnClosing(CancelEventArgs e)
@@ -216,6 +224,7 @@ public partial class MainWindow : Window
         }
 
         StatusBarText.Text = "Uygulama yeniden açıldı.";
+        _ = CheckLicenseWhenWindowOpensAsync();
     }
 
     private void ExitApplication()
@@ -252,6 +261,36 @@ public partial class MainWindow : Window
         finally
         {
             _isRevocationCheckRunning = false;
+        }
+    }
+
+    private async Task CheckLicenseWhenWindowOpensAsync()
+    {
+        if (!IsLoaded || _isForegroundLicenseCheckRunning)
+        {
+            return;
+        }
+
+        if (DateTimeOffset.UtcNow - _lastForegroundLicenseCheckAt < TimeSpan.FromSeconds(15))
+        {
+            return;
+        }
+
+        var cache = await _licenseCacheService.LoadAsync();
+        if (!LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
+        {
+            return;
+        }
+
+        try
+        {
+            _isForegroundLicenseCheckRunning = true;
+            _lastForegroundLicenseCheckAt = DateTimeOffset.UtcNow;
+            await EnforceRevocationPolicyAsync(showPopup: true);
+        }
+        finally
+        {
+            _isForegroundLicenseCheckRunning = false;
         }
     }
 
