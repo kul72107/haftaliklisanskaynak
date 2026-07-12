@@ -52,6 +52,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        EnsureStandardWindowChrome(visibleInTaskbar: true);
 
         _paths = AppPaths.ForCurrentUser();
         _settingsService = new SettingsService(_paths.SettingsFile);
@@ -74,8 +75,16 @@ public partial class MainWindow : Window
         _updateTimer.Start();
     }
 
+    private void EnsureStandardWindowChrome(bool visibleInTaskbar)
+    {
+        WindowStyle = WindowStyle.SingleBorderWindow;
+        ResizeMode = ResizeMode.CanResizeWithGrip;
+        ShowInTaskbar = visibleInTaskbar;
+    }
+
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        EnsureStandardWindowChrome(visibleInTaskbar: true);
         Directory.CreateDirectory(_paths.RootDirectory);
         StoragePathText.Text = $"Veri klasörü: {_paths.RootDirectory}";
         SettingsPathText.Text = $"Ayar dosyası: {_paths.SettingsFile}{Environment.NewLine}Secret dosyası: {_paths.SecretsFile}";
@@ -218,7 +227,7 @@ public partial class MainWindow : Window
         try
         {
             Show();
-            ShowInTaskbar = true;
+            EnsureStandardWindowChrome(visibleInTaskbar: true);
             WindowState = WindowState.Normal;
             Activate();
             if (_trayIcon is not null)
@@ -244,7 +253,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        ShowInTaskbar = true;
+        EnsureStandardWindowChrome(visibleInTaskbar: true);
         Activate();
         Topmost = true;
         Topmost = false;

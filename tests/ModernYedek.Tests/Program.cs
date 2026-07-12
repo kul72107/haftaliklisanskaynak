@@ -20,6 +20,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Static TXT license validation keeps expiry", TestStaticTxtLicenseValidationKeepsExpiry),
     ("Admin panel custom duration", TestAdminPanelCustomDuration),
     ("ResurrectSoft copyright notice", TestResurrectSoftCopyrightNotice),
+    ("Standard window chrome", TestStandardWindowChrome),
     ("Update manifest version check", TestUpdateManifest),
     ("Update download avoids locked stale ZIP", TestUpdateDownloadAvoidsLockedStaleZip),
     ("License cache offline window", TestLicenseCache),
@@ -303,6 +304,15 @@ static async Task TestResurrectSoftCopyrightNotice()
     Assert(xaml.Contains("Tüm hakları saklıdır", StringComparison.OrdinalIgnoreCase), "all rights reserved text");
 }
 
+static async Task TestStandardWindowChrome()
+{
+    var xaml = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml"));
+    var code = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml.cs"));
+    Assert(xaml.Contains("WindowStyle=\"SingleBorderWindow\"", StringComparison.OrdinalIgnoreCase), "native title bar xaml");
+    Assert(xaml.Contains("ResizeMode=\"CanResizeWithGrip\"", StringComparison.OrdinalIgnoreCase), "resize grip xaml");
+    Assert(code.Contains("EnsureStandardWindowChrome", StringComparison.Ordinal), "runtime title bar enforcement");
+}
+
 static async Task TestUpdateManifest()
 {
     var manifestUrl = "https://updates.test/latest.json";
@@ -310,9 +320,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.13",
+              "version": "1.0.14",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.13.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.14.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -324,16 +334,16 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.13", "update version");
+    Assert(result.Manifest.Version == "1.0.14", "update version");
 }
 
 static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 {
     var root = CreateTempRoot();
-    var url = "https://updates.test/releases/ModernYedek-1.0.13.zip";
+    var url = "https://updates.test/releases/ModernYedek-1.0.14.zip";
     var payload = "fake update payload";
     var sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
-    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.13.zip");
+    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.14.zip");
     await File.WriteAllTextAsync(staleZipPath, "locked old file");
 
     await using var locked = new FileStream(staleZipPath, FileMode.Open, FileAccess.Read, FileShare.None);
@@ -344,14 +354,14 @@ static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 
     var path = await new UpdateClient(http).DownloadAndVerifyAsync(new UpdateManifest
     {
-        Version = "1.0.13",
+        Version = "1.0.14",
         Url = url,
         Sha256 = sha256
     }, root);
 
     Assert(File.Exists(path), "downloaded update exists");
     Assert(!string.Equals(path, staleZipPath, StringComparison.OrdinalIgnoreCase), "download path is unique");
-    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.13-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
+    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.14-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
     Assert(!File.Exists(path + ".download"), "partial download renamed");
 }
 

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="MYedek - ResurrectSoft" Height="820" Width="1240" MinHeight="720" MinWidth="1100"
-        WindowStartupLocation="CenterScreen" WindowStyle="SingleBorderWindow" ResizeMode="CanResize" ShowInTaskbar="True" Loaded="Window_Loaded">
+        WindowStartupLocation="CenterScreen" WindowStyle="SingleBorderWindow" ResizeMode="CanResizeWithGrip" ShowInTaskbar="True" Loaded="Window_Loaded">
     <Window.Resources>
         <SolidColorBrush x:Key="Ink" Color="#18202F"/>
         <SolidColorBrush x:Key="Muted" Color="#667085"/>
