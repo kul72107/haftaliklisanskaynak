@@ -1814,7 +1814,8 @@ public partial class MainWindow : Window
             _settings.Update.ManifestUrl = UpdateSettings.DefaultManifestUrl;
         }
 
-        if (string.Equals(_settings.Update.ManifestUrl, UpdateSettings.LegacyRawManifestUrl, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(_settings.Update.ManifestUrl, UpdateSettings.LegacyRawManifestUrl, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(_settings.Update.ManifestUrl, UpdateSettings.LegacyCdnMainManifestUrl, StringComparison.OrdinalIgnoreCase))
         {
             _settings.Update.ManifestUrl = UpdateSettings.DefaultManifestUrl;
         }

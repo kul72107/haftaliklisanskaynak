@@ -390,7 +390,9 @@ static async Task TestUpdateManifestUrlUsesCdn()
 {
     var code = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml.cs"));
     Assert(UpdateSettings.DefaultManifestUrl.Contains("cdn.jsdelivr.net", StringComparison.OrdinalIgnoreCase), "default update cdn");
+    Assert(!UpdateSettings.DefaultManifestUrl.Contains("@main", StringComparison.OrdinalIgnoreCase), "default update cdn avoids main cache");
     Assert(code.Contains("LegacyRawManifestUrl", StringComparison.Ordinal), "legacy raw migration");
+    Assert(code.Contains("LegacyCdnMainManifestUrl", StringComparison.Ordinal), "legacy cdn main migration");
 }
 
 static async Task TestUpdateManifest()
@@ -400,9 +402,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.17",
+              "version": "1.0.18",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.17.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.18.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -414,16 +416,16 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.17", "update version");
+    Assert(result.Manifest.Version == "1.0.18", "update version");
 }
 
 static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 {
     var root = CreateTempRoot();
-    var url = "https://updates.test/releases/ModernYedek-1.0.17.zip";
+    var url = "https://updates.test/releases/ModernYedek-1.0.18.zip";
     var payload = "fake update payload";
     var sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
-    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.17.zip");
+    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.18.zip");
     await File.WriteAllTextAsync(staleZipPath, "locked old file");
 
     await using var locked = new FileStream(staleZipPath, FileMode.Open, FileAccess.Read, FileShare.None);
@@ -434,14 +436,14 @@ static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 
     var path = await new UpdateClient(http).DownloadAndVerifyAsync(new UpdateManifest
     {
-        Version = "1.0.17",
+        Version = "1.0.18",
         Url = url,
         Sha256 = sha256
     }, root);
 
     Assert(File.Exists(path), "downloaded update exists");
     Assert(!string.Equals(path, staleZipPath, StringComparison.OrdinalIgnoreCase), "download path is unique");
-    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.17-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
+    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.18-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
     Assert(!File.Exists(path + ".download"), "partial download renamed");
 }
 
