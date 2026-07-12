@@ -334,7 +334,7 @@ public partial class MainWindow : Window
         }
 
         var cache = await _licenseCacheService.LoadAsync();
-        if (!LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
+        if (cache is null)
         {
             return;
         }
@@ -1299,7 +1299,7 @@ public partial class MainWindow : Window
     private async Task EnforceRevocationPolicyAsync(bool showPopup)
     {
         var cache = await _licenseCacheService.LoadAsync();
-        if (!LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
+        if (cache is null)
         {
             return;
         }
