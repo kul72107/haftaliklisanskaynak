@@ -453,6 +453,19 @@ public partial class MainWindow : Window
         ToolTipService.SetIsEnabled(TooltipsEnabledCheck, true);
     }
 
+    private void PatternOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (PatternBackgroundLayer is null || PatternAccentLayer is null || PatternOpacityValueText is null)
+        {
+            return;
+        }
+
+        var value = Math.Round(e.NewValue, 2);
+        PatternBackgroundLayer.Opacity = value;
+        PatternAccentLayer.Opacity = Math.Round(Math.Min(0.20, value * 0.32), 3);
+        PatternOpacityValueText.Text = value.ToString("0.00", CultureInfo.InvariantCulture);
+    }
+
     private void ApplyTooltipsEnabled(DependencyObject current, bool enabled, HashSet<DependencyObject> visited)
     {
         if (!visited.Add(current))

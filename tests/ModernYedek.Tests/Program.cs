@@ -320,11 +320,15 @@ static async Task TestStandardWindowChrome()
 static async Task TestAnimatedPatternBackground()
 {
     var xaml = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml"));
+    var code = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml.cs"));
     var csproj = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "ModernYedek.App.csproj"));
     Assert(xaml.Contains("Assets/premium-pattern.png", StringComparison.OrdinalIgnoreCase), "pattern brush image");
     Assert(xaml.Contains("Assets/zippattern.png", StringComparison.OrdinalIgnoreCase), "accent zip pattern image");
     Assert(xaml.Contains("ZipPatternBrushTransform", StringComparison.Ordinal), "pattern animation transform");
     Assert(xaml.Contains("ZipPatternAccentBrushTransform", StringComparison.Ordinal), "accent pattern animation transform");
+    Assert(xaml.Contains("PatternOpacitySlider", StringComparison.Ordinal), "temporary pattern opacity slider");
+    Assert(xaml.Contains("PatternOpacityValueText", StringComparison.Ordinal), "pattern opacity value label");
+    Assert(code.Contains("PatternOpacitySlider_ValueChanged", StringComparison.Ordinal), "pattern opacity handler");
     Assert(xaml.Contains("RepeatBehavior=\"Forever\"", StringComparison.OrdinalIgnoreCase), "pattern loops");
     Assert(xaml.Contains("SidebarTextOutlineEffect", StringComparison.Ordinal), "sidebar text outline");
     Assert(csproj.Contains("Assets\\*.png", StringComparison.OrdinalIgnoreCase), "png resources included");
@@ -409,9 +413,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.20",
+              "version": "1.0.21",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.20.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.21.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -423,16 +427,16 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.20", "update version");
+    Assert(result.Manifest.Version == "1.0.21", "update version");
 }
 
 static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 {
     var root = CreateTempRoot();
-    var url = "https://updates.test/releases/ModernYedek-1.0.20.zip";
+    var url = "https://updates.test/releases/ModernYedek-1.0.21.zip";
     var payload = "fake update payload";
     var sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
-    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.20.zip");
+    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.21.zip");
     await File.WriteAllTextAsync(staleZipPath, "locked old file");
 
     await using var locked = new FileStream(staleZipPath, FileMode.Open, FileAccess.Read, FileShare.None);
@@ -443,14 +447,14 @@ static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 
     var path = await new UpdateClient(http).DownloadAndVerifyAsync(new UpdateManifest
     {
-        Version = "1.0.20",
+        Version = "1.0.21",
         Url = url,
         Sha256 = sha256
     }, root);
 
     Assert(File.Exists(path), "downloaded update exists");
     Assert(!string.Equals(path, staleZipPath, StringComparison.OrdinalIgnoreCase), "download path is unique");
-    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.20-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
+    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.21-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
     Assert(!File.Exists(path + ".download"), "partial download renamed");
 }
 

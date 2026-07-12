@@ -210,7 +210,7 @@
                 <RowDefinition Height="44"/>
             </Grid.RowDefinitions>
 
-            <Rectangle Grid.Row="1" IsHitTestVisible="False" Opacity="0.18">
+            <Rectangle x:Name="PatternBackgroundLayer" Grid.Row="1" IsHitTestVisible="False" Opacity="0.18">
                 <Rectangle.Fill>
                     <ImageBrush ImageSource="pack://application:,,,/Assets/premium-pattern.png"
                                 TileMode="Tile"
@@ -606,7 +606,7 @@
                 </Grid>
             </ScrollViewer>
 
-            <Rectangle Grid.Row="1" IsHitTestVisible="False" Opacity="0.055">
+            <Rectangle x:Name="PatternAccentLayer" Grid.Row="1" IsHitTestVisible="False" Opacity="0.055">
                 <Rectangle.Fill>
                     <ImageBrush ImageSource="pack://application:,,,/Assets/zippattern.png"
                                 TileMode="Tile"
@@ -644,10 +644,25 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="StatusBarText" Text="Hazır" VerticalAlignment="Center" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis" ToolTip="Son işlem durumu ve kısa bilgilendirme mesajları burada görünür."/>
                     <TextBlock x:Name="LicenseRemainingText" Grid.Column="1" Text="Lisans: yok" VerticalAlignment="Center" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Margin="18,0,0,0" ToolTip="Sahip olunan aktif lisanstan kaç gün kaldığını gösterir."/>
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0" ToolTip="Geçici test kontrolü. Pattern opaklığını canlı değiştirir; bulduğunuz değeri bana söyleyebilirsiniz.">
+                        <TextBlock Text="Pattern" VerticalAlignment="Center" Foreground="{StaticResource Muted}" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                        <Slider x:Name="PatternOpacitySlider"
+                                Width="120"
+                                Minimum="0"
+                                Maximum="0.65"
+                                Value="0.18"
+                                SmallChange="0.01"
+                                LargeChange="0.05"
+                                TickFrequency="0.01"
+                                VerticalAlignment="Center"
+                                ValueChanged="PatternOpacitySlider_ValueChanged"/>
+                        <TextBlock x:Name="PatternOpacityValueText" Text="0.18" Width="38" VerticalAlignment="Center" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
                         <TextBlock Text="WhatsApp iletişim: 05300221838" VerticalAlignment="Center" Foreground="#128C4A" FontWeight="Bold" ToolTip="Lisans veya destek için WhatsApp iletişim numarası."/>
                         <CheckBox x:Name="TooltipsEnabledCheck"
                                   Content="Açıklamalar"
