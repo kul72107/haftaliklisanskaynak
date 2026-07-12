@@ -36,14 +36,17 @@ public partial class MainWindow : Window
     private readonly JsonLinesBackupLogger _logger;
     private readonly DispatcherTimer _schedulerTimer;
     private readonly DispatcherTimer _revocationTimer;
+    private readonly DispatcherTimer _updateTimer;
     private WinForms.NotifyIcon? _trayIcon;
     private BackupSettings _settings;
     private bool _isRunning;
     private bool _isRevocationCheckRunning;
     private bool _isForegroundLicenseCheckRunning;
+    private bool _isUpdateCheckRunning;
     private bool _isMovingToTray;
     private bool _forceClose;
     private DateTimeOffset _lastForegroundLicenseCheckAt = DateTimeOffset.MinValue;
+    private DateTimeOffset _lastForegroundUpdateCheckAt = DateTimeOffset.MinValue;
     private string? _lastScheduleFireKey;
 
     public MainWindow()
@@ -65,6 +68,10 @@ public partial class MainWindow : Window
         _revocationTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(1) };
         _revocationTimer.Tick += RevocationTimer_Tick;
         _revocationTimer.Start();
+
+        _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(1) };
+        _updateTimer.Tick += UpdateTimer_Tick;
+        _updateTimer.Start();
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -101,12 +108,12 @@ public partial class MainWindow : Window
             await EnforceRevocationPolicyAsync(showPopup: true);
             await RefreshLogsAsync();
             UpdateDashboard();
-            await CheckForUpdatesOnStartupAsync();
+            await CheckForUpdatesAsync(showNoUpdateStatus: true, allowOptionalPrompt: true);
         }
         catch (Exception ex)
         {
             StatusBarText.Text = "Ayarlar yüklenemedi.";
-            ShowError(ex.Message, "Modern Yedek");
+            ShowError(ex.Message, "MYedek");
         }
     }
 
@@ -126,6 +133,7 @@ public partial class MainWindow : Window
     {
         base.OnActivated(e);
         _ = CheckLicenseWhenWindowOpensAsync();
+        _ = CheckUpdateWhenWindowOpensAsync();
     }
 
     protected override void OnClosing(CancelEventArgs e)
@@ -163,7 +171,7 @@ public partial class MainWindow : Window
         _trayIcon = new WinForms.NotifyIcon
         {
             Icon = System.Drawing.SystemIcons.Application,
-            Text = "Modern Yedek - ResurrectSoft",
+            Text = "MYedek - ResurrectSoft",
             ContextMenuStrip = menu,
             Visible = false
         };
@@ -196,7 +204,7 @@ public partial class MainWindow : Window
         {
             _trayIcon.ShowBalloonTip(
                 3500,
-                "Modern Yedek",
+                "MYedek",
                 "Uygulama kapanmadı; sağ alt simge alanında çalışmaya devam ediyor.",
                 WinForms.ToolTipIcon.Info);
         }
@@ -225,6 +233,24 @@ public partial class MainWindow : Window
 
         StatusBarText.Text = "Uygulama yeniden açıldı.";
         _ = CheckLicenseWhenWindowOpensAsync();
+        _ = CheckUpdateWhenWindowOpensAsync();
+    }
+
+    public void ShowFromExternalActivation()
+    {
+        if (!IsVisible || WindowState == WindowState.Minimized || _trayIcon?.Visible == true)
+        {
+            RestoreFromTray();
+            return;
+        }
+
+        ShowInTaskbar = true;
+        Activate();
+        Topmost = true;
+        Topmost = false;
+        Focus();
+        _ = CheckLicenseWhenWindowOpensAsync();
+        _ = CheckUpdateWhenWindowOpensAsync();
     }
 
     private void ExitApplication()
@@ -264,6 +290,11 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void UpdateTimer_Tick(object? sender, EventArgs e)
+    {
+        await CheckForUpdatesAsync(showNoUpdateStatus: false, allowOptionalPrompt: false);
+    }
+
     private async Task CheckLicenseWhenWindowOpensAsync()
     {
         if (!IsLoaded || _isForegroundLicenseCheckRunning)
@@ -292,6 +323,22 @@ public partial class MainWindow : Window
         {
             _isForegroundLicenseCheckRunning = false;
         }
+    }
+
+    private async Task CheckUpdateWhenWindowOpensAsync()
+    {
+        if (!IsLoaded)
+        {
+            return;
+        }
+
+        if (DateTimeOffset.UtcNow - _lastForegroundUpdateCheckAt < TimeSpan.FromSeconds(15))
+        {
+            return;
+        }
+
+        _lastForegroundUpdateCheckAt = DateTimeOffset.UtcNow;
+        await CheckForUpdatesAsync(showNoUpdateStatus: false, allowOptionalPrompt: false);
     }
 
     private void Nav_Click(object sender, RoutedEventArgs e)
@@ -881,6 +928,11 @@ public partial class MainWindow : Window
 
             CollectSettingsFromUi();
             await _settingsService.SaveAsync(_settings);
+            if (!await CheckForUpdatesAsync(showNoUpdateStatus: false, allowOptionalPrompt: false))
+            {
+                return;
+            }
+
             if (!await EnsureLicenseUsableAsync())
             {
                 DashboardStatusText.Text = "Lisans gerekli";
@@ -1609,23 +1661,37 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task CheckForUpdatesOnStartupAsync()
+    private async Task<bool> CheckForUpdatesAsync(bool showNoUpdateStatus, bool allowOptionalPrompt)
     {
         NormalizeUpdateSettings();
         if (!_settings.Update.Enabled)
         {
-            return;
+            return true;
+        }
+
+        if (_isUpdateCheckRunning)
+        {
+            return true;
         }
 
         try
         {
-            StatusBarText.Text = "Guncelleme kontrol ediliyor...";
+            _isUpdateCheckRunning = true;
+            if (showNoUpdateStatus)
+            {
+                StatusBarText.Text = "Guncelleme kontrol ediliyor...";
+            }
+
             var currentVersion = GetCurrentVersion();
             var result = await new UpdateClient().CheckAsync(_settings.Update.ManifestUrl, currentVersion);
             if (!result.HasUpdate || result.Manifest is null)
             {
-                StatusBarText.Text = result.Message;
-                return;
+                if (showNoUpdateStatus)
+                {
+                    StatusBarText.Text = result.Message;
+                }
+
+                return true;
             }
 
             var manifest = result.Manifest;
@@ -1638,22 +1704,39 @@ public partial class MainWindow : Window
             {
                 ShowWarning($"{message}{Environment.NewLine}{Environment.NewLine}Bu guncelleme zorunlu. Uygulama simdi guncellenecek.", "Zorunlu guncelleme");
                 await DownloadAndStartUpdaterAsync(manifest);
-                return;
+                return false;
             }
 
-            if (ConfirmAction($"{message}{Environment.NewLine}{Environment.NewLine}Simdi guncellemek ister misiniz?", "Guncelleme var"))
+            if (allowOptionalPrompt && ConfirmAction($"{message}{Environment.NewLine}{Environment.NewLine}Simdi guncellemek ister misiniz?", "Guncelleme var"))
             {
                 await DownloadAndStartUpdaterAsync(manifest);
+                return false;
             }
-            else
+
+            if (allowOptionalPrompt)
             {
                 StatusBarText.Text = "Guncelleme ertelendi.";
             }
+            else
+            {
+                StatusBarText.Text = $"Guncelleme var: {manifest.Version}";
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
             StatusBarText.Text = "Guncelleme kontrol edilemedi.";
-            ShowWarning($"Guncelleme kontrol edilemedi:{Environment.NewLine}{ex.Message}", "Guncelleme uyarisi");
+            if (showNoUpdateStatus)
+            {
+                ShowWarning($"Guncelleme kontrol edilemedi:{Environment.NewLine}{ex.Message}", "Guncelleme uyarisi");
+            }
+
+            return true;
+        }
+        finally
+        {
+            _isUpdateCheckRunning = false;
         }
     }
 

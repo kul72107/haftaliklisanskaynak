@@ -137,7 +137,7 @@ static void TryShowError(string message)
     {
         System.Windows.Forms.MessageBox.Show(
             message,
-            "Modern Yedek Guncelleme Hatasi",
+            "MYedek Guncelleme Hatasi",
             System.Windows.Forms.MessageBoxButtons.OK,
             System.Windows.Forms.MessageBoxIcon.Error);
     }
