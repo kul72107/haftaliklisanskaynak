@@ -21,6 +21,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Admin panel custom duration", TestAdminPanelCustomDuration),
     ("ResurrectSoft copyright notice", TestResurrectSoftCopyrightNotice),
     ("Standard window chrome", TestStandardWindowChrome),
+    ("Animated pattern background", TestAnimatedPatternBackground),
     ("Update manifest URL uses CDN", TestUpdateManifestUrlUsesCdn),
     ("Update manifest version check", TestUpdateManifest),
     ("Update download avoids locked stale ZIP", TestUpdateDownloadAvoidsLockedStaleZip),
@@ -314,6 +315,17 @@ static async Task TestStandardWindowChrome()
     Assert(code.Contains("EnsureStandardWindowChrome", StringComparison.Ordinal), "runtime title bar enforcement");
 }
 
+static async Task TestAnimatedPatternBackground()
+{
+    var xaml = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml"));
+    var csproj = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "ModernYedek.App.csproj"));
+    Assert(xaml.Contains("Assets/zippattern.png", StringComparison.OrdinalIgnoreCase), "pattern brush image");
+    Assert(xaml.Contains("ZipPatternBrushTransform", StringComparison.Ordinal), "pattern animation transform");
+    Assert(xaml.Contains("RepeatBehavior=\"Forever\"", StringComparison.OrdinalIgnoreCase), "pattern loops");
+    Assert(xaml.Contains("SidebarTextOutlineEffect", StringComparison.Ordinal), "sidebar text outline");
+    Assert(csproj.Contains("Assets\\zippattern.png", StringComparison.OrdinalIgnoreCase), "pattern resource included");
+}
+
 static async Task TestUpdateManifestUrlUsesCdn()
 {
     var code = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml.cs"));
@@ -328,9 +340,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.15",
+              "version": "1.0.16",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.15.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.16.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -342,16 +354,16 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.15", "update version");
+    Assert(result.Manifest.Version == "1.0.16", "update version");
 }
 
 static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 {
     var root = CreateTempRoot();
-    var url = "https://updates.test/releases/ModernYedek-1.0.15.zip";
+    var url = "https://updates.test/releases/ModernYedek-1.0.16.zip";
     var payload = "fake update payload";
     var sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
-    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.15.zip");
+    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.16.zip");
     await File.WriteAllTextAsync(staleZipPath, "locked old file");
 
     await using var locked = new FileStream(staleZipPath, FileMode.Open, FileAccess.Read, FileShare.None);
@@ -362,14 +374,14 @@ static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 
     var path = await new UpdateClient(http).DownloadAndVerifyAsync(new UpdateManifest
     {
-        Version = "1.0.15",
+        Version = "1.0.16",
         Url = url,
         Sha256 = sha256
     }, root);
 
     Assert(File.Exists(path), "downloaded update exists");
     Assert(!string.Equals(path, staleZipPath, StringComparison.OrdinalIgnoreCase), "download path is unique");
-    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.15-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
+    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.16-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
     Assert(!File.Exists(path + ".download"), "partial download renamed");
 }
 

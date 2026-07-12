@@ -12,6 +12,7 @@
         <SolidColorBrush x:Key="Panel" Color="#FFFFFF"/>
         <SolidColorBrush x:Key="Line" Color="#D9E0EA"/>
         <SolidColorBrush x:Key="Accent" Color="#1F7A6D"/>
+        <DropShadowEffect x:Key="SidebarTextOutlineEffect" Color="#000000" ShadowDepth="0" BlurRadius="1.35" Opacity="0.95"/>
 
         <Style TargetType="ToolTip">
             <Setter Property="Padding" Value="10,8"/>
@@ -31,6 +32,7 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="ToolTipService.InitialShowDelay" Value="300"/>
             <Setter Property="ToolTipService.ShowDuration" Value="15000"/>
@@ -39,7 +41,10 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}" CornerRadius="7" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
-                            <ContentPresenter VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                            <ContentPresenter VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"
+                                              RecognizesAccessKey="True"
+                                              Effect="{StaticResource SidebarTextOutlineEffect}"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -145,7 +150,7 @@
         <Border Grid.Column="0" Background="#121A27" ToolTip="Sol menü. Uygulamanın farklı ayar ve izleme sayfalarına buradan geçersiniz.">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Top" Margin="18,22,18,18">
-                    <TextBlock Text="MYedek" Foreground="White" FontSize="23" FontWeight="Bold" ToolTip="Uygulamanın ana adı. Bu araç dosya ve klasörlerinizi yedeklemek için kullanılır."/>
+                    <TextBlock Text="MYedek" Foreground="White" FontSize="23" FontWeight="Bold" Effect="{StaticResource SidebarTextOutlineEffect}" ToolTip="Uygulamanın ana adı. Bu araç dosya ve klasörlerinizi yedeklemek için kullanılır."/>
                     <TextBlock Text="ResurrectSoft" Foreground="#25D366" FontSize="13" FontWeight="SemiBold" Margin="0,4,0,0" ToolTip="MYedek uygulamasını geliştiren yazılım markası."/>
                     <TextBlock Text="ZIP, zamanlama ve bulut" Foreground="#A8B4C7" FontSize="12" Margin="0,5,0,0" ToolTip="Uygulama ZIP yedekleri oluşturabilir, zamanlayabilir ve isterseniz buluta yükleyebilir."/>
                 </StackPanel>
@@ -174,6 +179,38 @@
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="44"/>
             </Grid.RowDefinitions>
+
+            <Rectangle Grid.Row="1" IsHitTestVisible="False" Opacity="0.13">
+                <Rectangle.Fill>
+                    <ImageBrush ImageSource="pack://application:,,,/Assets/zippattern.png"
+                                TileMode="Tile"
+                                Viewport="0,0,220,220"
+                                ViewportUnits="Absolute"
+                                Stretch="UniformToFill">
+                        <ImageBrush.Transform>
+                            <TranslateTransform x:Name="ZipPatternBrushTransform"/>
+                        </ImageBrush.Transform>
+                    </ImageBrush>
+                </Rectangle.Fill>
+                <Rectangle.Triggers>
+                    <EventTrigger RoutedEvent="Rectangle.Loaded">
+                        <BeginStoryboard>
+                            <Storyboard RepeatBehavior="Forever">
+                                <DoubleAnimation Storyboard.TargetName="ZipPatternBrushTransform"
+                                                 Storyboard.TargetProperty="X"
+                                                 From="0"
+                                                 To="220"
+                                                 Duration="0:0:22"/>
+                                <DoubleAnimation Storyboard.TargetName="ZipPatternBrushTransform"
+                                                 Storyboard.TargetProperty="Y"
+                                                 From="0"
+                                                 To="220"
+                                                 Duration="0:0:22"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </Rectangle.Triggers>
+            </Rectangle>
 
             <Border Grid.Row="0" Background="#E9FFF1" BorderBrush="#25D366" BorderThickness="0,0,0,3" ToolTip="Lisans iletişim şeridi. Lisans almak veya mevcut lisansı yükseltmek için WhatsApp numarasını gösterir.">
                 <Grid Margin="24,0">
