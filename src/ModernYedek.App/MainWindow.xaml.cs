@@ -1531,6 +1531,8 @@ public partial class MainWindow : Window
 
         SourcesList.ItemsSource = _settings.Sources.Select(FormatSource).ToList();
         TargetsList.ItemsSource = _settings.Targets.Select(target => target.Path).ToList();
+        SourcesEmptyArt.Visibility = _settings.Sources.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        TargetsEmptyArt.Visibility = _settings.Targets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         RetentionEnabledCheck.IsChecked = _settings.Retention.Enabled;
         KeepDaysBox.Text = _settings.Retention.KeepDays.ToString(CultureInfo.InvariantCulture);
@@ -1611,6 +1613,7 @@ public partial class MainWindow : Window
     {
         var entries = await _logger.ReadRecentAsync(300);
         LogsList.ItemsSource = entries.Select(entry => new LogListItem(entry)).ToList();
+        LogsEmptyArt.Visibility = entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdateDashboard()

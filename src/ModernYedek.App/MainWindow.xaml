@@ -4,14 +4,16 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="MYedek - ResurrectSoft" Height="820" Width="1240" MinHeight="720" MinWidth="1100"
+        Title="MYedek - ResurrectSoft" Icon="pack://application:,,,/Assets/myedek.ico" Height="820" Width="1240" MinHeight="720" MinWidth="1100"
         WindowStartupLocation="CenterScreen" WindowStyle="SingleBorderWindow" ResizeMode="CanResizeWithGrip" ShowInTaskbar="True" Loaded="Window_Loaded">
     <Window.Resources>
-        <SolidColorBrush x:Key="Ink" Color="#18202F"/>
-        <SolidColorBrush x:Key="Muted" Color="#667085"/>
-        <SolidColorBrush x:Key="Panel" Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="Line" Color="#D9E0EA"/>
-        <SolidColorBrush x:Key="Accent" Color="#1F7A6D"/>
+        <SolidColorBrush x:Key="Ink" Color="#21172F"/>
+        <SolidColorBrush x:Key="Muted" Color="#71647F"/>
+        <SolidColorBrush x:Key="Panel" Color="#FFFCFF"/>
+        <SolidColorBrush x:Key="Line" Color="#E6DDF4"/>
+        <SolidColorBrush x:Key="Accent" Color="#6E3FD1"/>
+        <SolidColorBrush x:Key="AccentGreen" Color="#25D366"/>
+        <SolidColorBrush x:Key="Bronze" Color="#BD813A"/>
         <DropShadowEffect x:Key="SidebarTextOutlineEffect" Color="#000000" ShadowDepth="0" BlurRadius="1.35" Opacity="0.95"/>
 
         <Style TargetType="ToolTip">
@@ -99,6 +101,14 @@
             <Setter Property="Margin" Value="0,0,14,14"/>
         </Style>
 
+        <Style x:Key="DashboardIconStyle" TargetType="Image">
+            <Setter Property="Width" Value="52"/>
+            <Setter Property="Height" Value="52"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+        </Style>
+
         <Style TargetType="TextBox">
             <Setter Property="Height" Value="34"/>
             <Setter Property="Padding" Value="9,6"/>
@@ -141,14 +151,17 @@
         </Style>
     </Window.Resources>
 
-    <Grid Background="#F5F7FB">
+    <Grid Background="#F8F5FC">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="236"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="#121A27" ToolTip="Sol menü. Uygulamanın farklı ayar ve izleme sayfalarına buradan geçersiniz.">
-            <DockPanel LastChildFill="True">
+        <Border Grid.Column="0" ToolTip="Sol menü. Uygulamanın farklı ayar ve izleme sayfalarına buradan geçersiniz.">
+            <Border.Background>
+                <ImageBrush ImageSource="pack://application:,,,/Assets/premium-sidebar-texture.png" Stretch="UniformToFill"/>
+            </Border.Background>
+            <DockPanel LastChildFill="True" Background="#D80F071C">
                 <StackPanel DockPanel.Dock="Top" Margin="18,22,18,18">
                     <TextBlock Text="MYedek" Foreground="White" FontSize="23" FontWeight="Bold" Effect="{StaticResource SidebarTextOutlineEffect}" ToolTip="Uygulamanın ana adı. Bu araç dosya ve klasörlerinizi yedeklemek için kullanılır."/>
                     <TextBlock Text="ResurrectSoft" Foreground="#25D366" FontSize="13" FontWeight="SemiBold" Margin="0,4,0,0" ToolTip="MYedek uygulamasını geliştiren yazılım markası."/>
@@ -180,11 +193,11 @@
                 <RowDefinition Height="44"/>
             </Grid.RowDefinitions>
 
-            <Rectangle Grid.Row="1" IsHitTestVisible="False" Opacity="0.13">
+            <Rectangle Grid.Row="1" IsHitTestVisible="False" Opacity="0.10">
                 <Rectangle.Fill>
-                    <ImageBrush ImageSource="pack://application:,,,/Assets/zippattern.png"
+                    <ImageBrush ImageSource="pack://application:,,,/Assets/premium-pattern.png"
                                 TileMode="Tile"
-                                Viewport="0,0,220,220"
+                                Viewport="0,0,260,260"
                                 ViewportUnits="Absolute"
                                 Stretch="UniformToFill">
                         <ImageBrush.Transform>
@@ -199,38 +212,42 @@
                                 <DoubleAnimation Storyboard.TargetName="ZipPatternBrushTransform"
                                                  Storyboard.TargetProperty="X"
                                                  From="0"
-                                                 To="220"
-                                                 Duration="0:0:22"/>
+                                                 To="260"
+                                                 Duration="0:0:30"/>
                                 <DoubleAnimation Storyboard.TargetName="ZipPatternBrushTransform"
                                                  Storyboard.TargetProperty="Y"
                                                  From="0"
-                                                 To="220"
-                                                 Duration="0:0:22"/>
+                                                 To="260"
+                                                 Duration="0:0:30"/>
                             </Storyboard>
                         </BeginStoryboard>
                     </EventTrigger>
                 </Rectangle.Triggers>
             </Rectangle>
 
-            <Border Grid.Row="0" Background="#E9FFF1" BorderBrush="#25D366" BorderThickness="0,0,0,3" ToolTip="Lisans iletişim şeridi. Lisans almak veya mevcut lisansı yükseltmek için WhatsApp numarasını gösterir.">
+            <Border Grid.Row="0" BorderBrush="#8E5CF7" BorderThickness="0,0,0,3" ToolTip="Lisans iletişim şeridi. Lisans almak veya mevcut lisansı yükseltmek için WhatsApp numarasını gösterir.">
+                <Border.Background>
+                    <ImageBrush ImageSource="pack://application:,,,/Assets/premium-header-banner.png" Stretch="Fill"/>
+                </Border.Background>
                 <Grid Margin="24,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="96"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Border Width="78" Height="78" Background="#25D366" CornerRadius="39" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip="WhatsApp üzerinden lisans talep edebileceğinizi gösteren iletişim simgesi.">
+                    <Border Width="78" Height="78" Background="#25D366" BorderBrush="#D9B16C" BorderThickness="2" CornerRadius="39" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip="WhatsApp üzerinden lisans talep edebileceğinizi gösteren iletişim simgesi.">
                         <TextBlock Text="☎" Foreground="White" FontSize="46" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="WhatsApp iletişim simgesi."/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock x:Name="PageTitleText" Text="Dashboard" Visibility="Collapsed"/>
                         <TextBlock x:Name="PageSubtitleText" Text="Yedekleme durumunu ve önemli uyarıları tek ekrandan takip edin." Visibility="Collapsed"/>
-                        <TextBlock x:Name="LicenseBannerTitleText" Text="LİSANS GEREKLİ" Foreground="#0B3D22" FontSize="32" FontWeight="Black" TextWrapping="Wrap" ToolTip="Lisans yoksa lisans gerektiğini, lisans varsa yükseltme bilgisini gösterir."/>
+                        <TextBlock x:Name="LicenseBannerTitleText" Text="LİSANS GEREKLİ" Foreground="White" FontSize="32" FontWeight="Black" TextWrapping="Wrap" Effect="{StaticResource SidebarTextOutlineEffect}" ToolTip="Lisans yoksa lisans gerektiğini, lisans varsa yükseltme bilgisini gösterir."/>
                         <TextBlock Text="LİSANS İÇİN WHATSAPPTAN BU NUMARADAN LİSANS TALEP EDİNİZ: 05300221838"
-                                   Foreground="#0B3D22"
+                                   Foreground="#D9FFEA"
                                    FontSize="21"
                                    FontWeight="Bold"
                                    TextWrapping="Wrap"
+                                   Effect="{StaticResource SidebarTextOutlineEffect}"
                                    ToolTip="Lisans almak için bu WhatsApp numarasından iletişim kurmanız gerekir: 05300221838"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
@@ -245,28 +262,56 @@
                     <StackPanel x:Name="DashboardPanel">
                         <UniformGrid Columns="4">
                             <Border Style="{StaticResource CardStyle}" ToolTip="Son yedekleme veya uygulama durumunu hızlıca gösterir.">
-                                <StackPanel>
-                                    <TextBlock Text="Son Durum" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Uygulamanın hazır, çalışıyor, hata veya lisans gerekli gibi genel durumunu belirtir."/>
-                                    <TextBlock x:Name="DashboardStatusText" Text="Hazır" Foreground="{StaticResource Ink}" FontSize="22" FontWeight="SemiBold" Margin="0,8,0,0" ToolTip="En son bilinen durum burada yazılır."/>
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Image Source="pack://application:,,,/Assets/icon-backup-success.png" Style="{StaticResource DashboardIconStyle}" ToolTip="Yedekleme durum ikonu."/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Son Durum" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Uygulamanın hazır, çalışıyor, hata veya lisans gerekli gibi genel durumunu belirtir."/>
+                                        <TextBlock x:Name="DashboardStatusText" Text="Hazır" Foreground="{StaticResource Ink}" FontSize="22" FontWeight="SemiBold" Margin="0,8,0,0" ToolTip="En son bilinen durum burada yazılır."/>
+                                    </StackPanel>
+                                </Grid>
                             </Border>
                             <Border Style="{StaticResource CardStyle}" ToolTip="Zamanlama açıksa bir sonraki otomatik yedekleme zamanını gösterir.">
-                                <StackPanel>
-                                    <TextBlock Text="Sıradaki Çalışma" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Otomatik yedeklemenin bir sonraki çalışacağı tarih ve saat."/>
-                                    <TextBlock x:Name="NextRunText" Text="-" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap" ToolTip="Zamanlama kapalıysa burada Kapalı veya boş değer görünebilir."/>
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Image Source="pack://application:,,,/Assets/icon-schedule-clock.png" Style="{StaticResource DashboardIconStyle}" ToolTip="Zamanlama ikonu."/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Sıradaki Çalışma" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Otomatik yedeklemenin bir sonraki çalışacağı tarih ve saat."/>
+                                        <TextBlock x:Name="NextRunText" Text="-" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap" ToolTip="Zamanlama kapalıysa burada Kapalı veya boş değer görünebilir."/>
+                                    </StackPanel>
+                                </Grid>
                             </Border>
                             <Border Style="{StaticResource CardStyle}" ToolTip="Seçili hedef diskteki boş alan bilgisini gösterir.">
-                                <StackPanel>
-                                    <TextBlock Text="Hedef Disk" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Yedeklerin kaydedileceği hedef diskin alan durumu."/>
-                                    <TextBlock x:Name="DiskSpaceText" Text="-" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap" ToolTip="Yedek başlamadan önce hedefte yeterli boş alan olup olmadığını anlamaya yardımcı olur."/>
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Image Source="pack://application:,,,/Assets/icon-zip-archive.png" Style="{StaticResource DashboardIconStyle}" ToolTip="ZIP arşiv ikonu."/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Hedef Disk" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Yedeklerin kaydedileceği hedef diskin alan durumu."/>
+                                        <TextBlock x:Name="DiskSpaceText" Text="-" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" TextWrapping="Wrap" ToolTip="Yedek başlamadan önce hedefte yeterli boş alan olup olmadığını anlamaya yardımcı olur."/>
+                                    </StackPanel>
+                                </Grid>
                             </Border>
                             <Border Style="{StaticResource CardStyle}" ToolTip="Google Cloud Storage ayarlarının genel durumunu gösterir.">
-                                <StackPanel>
-                                    <TextBlock Text="Bulut" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Bulut yedekleme açık mı, bucket bilgisi var mı gibi kısa durum bilgisi."/>
-                                    <TextBlock x:Name="CloudStateText" Text="Kapalı" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" ToolTip="Bulut kapalıysa yerel yedek alınır ama Google Cloud'a yüklenmez."/>
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Image Source="pack://application:,,,/Assets/icon-cloud-upload.png" Style="{StaticResource DashboardIconStyle}" ToolTip="Bulut yükleme ikonu."/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Bulut" Foreground="{StaticResource Muted}" FontSize="12" ToolTip="Bulut yedekleme açık mı, bucket bilgisi var mı gibi kısa durum bilgisi."/>
+                                        <TextBlock x:Name="CloudStateText" Text="Kapalı" Foreground="{StaticResource Ink}" FontSize="18" FontWeight="SemiBold" Margin="0,8,0,0" ToolTip="Bulut kapalıysa yerel yedek alınır ama Google Cloud'a yüklenmez."/>
+                                    </StackPanel>
+                                </Grid>
                             </Border>
                         </UniformGrid>
 
@@ -278,6 +323,7 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock Text="Yedek Özeti" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource Ink}" ToolTip="Son yedekleme hakkında kısa özet alanı."/>
+                                    <Image Source="pack://application:,,,/Assets/premium-divider.png" Height="10" Stretch="Fill" Opacity="0.72" Margin="0,8,36,6" IsHitTestVisible="False"/>
                                     <TextBlock x:Name="LastArchiveText" Text="Henüz yedek alınmadı." Margin="0,12,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" ToolTip="Son oluşturulan ZIP dosyasının yolu, SHA256 hash değeri ve dosya boyutu burada görünür."/>
                                     <TextBlock x:Name="ErrorSummaryText" Text="Kritik hata yok." Margin="0,8,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" ToolTip="Son işlemde oluşan önemli hata mesajlarının kısa özeti."/>
                                 </StackPanel>
@@ -293,7 +339,10 @@
                         <Border Style="{StaticResource CardStyle}" ToolTip="Yedeklenecek dosya ve klasörleri burada yönetirsiniz.">
                             <StackPanel>
                                 <TextBlock Text="Kaynak klasörler ve dosyalar" FontSize="18" FontWeight="SemiBold" ToolTip="Yedek içine alınacak tüm kaynaklar bu bölümde listelenir."/>
-                                <ListBox x:Name="SourcesList" Height="190" Margin="0,12,0,12" ToolTip="Yedeklenecek kayıtlı kaynakları gösterir. Silmek için listedeki kaydı seçip Sil butonuna basın."/>
+                                <Grid Height="190" Margin="0,12,0,12">
+                                    <ListBox x:Name="SourcesList" ToolTip="Yedeklenecek kayıtlı kaynakları gösterir. Silmek için listedeki kaydı seçip Sil butonuna basın."/>
+                                    <Image x:Name="SourcesEmptyArt" Source="pack://application:,,,/Assets/empty-sources.png" Stretch="Uniform" Opacity="0.22" IsHitTestVisible="False"/>
+                                </Grid>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -319,7 +368,10 @@
                         <Border Style="{StaticResource CardStyle}" ToolTip="Yedek ZIP dosyalarının kaydedileceği hedef klasörleri burada yönetirsiniz.">
                             <StackPanel>
                                 <TextBlock Text="Hedef klasörler" FontSize="18" FontWeight="SemiBold" ToolTip="Yedek dosyalarının kaydedileceği klasörler."/>
-                                <ListBox x:Name="TargetsList" Height="170" Margin="0,12,0,12" ToolTip="Tanımlı hedef klasörleri gösterir. Yedekler bu klasörlerden etkin olanlara yazılır."/>
+                                <Grid Height="170" Margin="0,12,0,12">
+                                    <ListBox x:Name="TargetsList" ToolTip="Tanımlı hedef klasörleri gösterir. Yedekler bu klasörlerden etkin olanlara yazılır."/>
+                                    <Image x:Name="TargetsEmptyArt" Source="pack://application:,,,/Assets/empty-targets.png" Stretch="Uniform" Opacity="0.22" IsHitTestVisible="False"/>
+                                </Grid>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -462,7 +514,10 @@
                         <Border Style="{StaticResource CardStyle}" ToolTip="Yedekleme işlemlerinin ayrıntılı kayıtlarını inceleme alanı.">
                             <StackPanel>
                                 <TextBlock Text="Loglar" FontSize="18" FontWeight="SemiBold" ToolTip="Uygulamanın yedekleme, doğrulama, bulut ve hata kayıtları."/>
-                                <ListBox x:Name="LogsList" Height="330" Margin="0,12,0,12" SelectionChanged="LogsList_SelectionChanged" ToolTip="Log kayıtlarını listeler. Ayrıntısını görmek için bir kayda tıklayın."/>
+                                <Grid Height="330" Margin="0,12,0,12">
+                                    <ListBox x:Name="LogsList" SelectionChanged="LogsList_SelectionChanged" ToolTip="Log kayıtlarını listeler. Ayrıntısını görmek için bir kayda tıklayın."/>
+                                    <Image x:Name="LogsEmptyArt" Source="pack://application:,,,/Assets/empty-logs.png" Stretch="Uniform" Opacity="0.20" IsHitTestVisible="False"/>
+                                </Grid>
                                 <TextBox x:Name="LogDetailBox" Height="96" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" IsReadOnly="True" ToolTip="Seçili log kaydının ayrıntılı açıklaması burada görünür. Bu alan yalnızca okunur."/>
                                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                                     <Button Content="Yenile" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshLogs_Click" ToolTip="Log dosyasını yeniden okur ve listedeki kayıtları günceller."/>

@@ -22,6 +22,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("ResurrectSoft copyright notice", TestResurrectSoftCopyrightNotice),
     ("Standard window chrome", TestStandardWindowChrome),
     ("Animated pattern background", TestAnimatedPatternBackground),
+    ("Premium visual asset set", TestPremiumVisualAssetSet),
+    ("Responsive visual constraints", TestResponsiveVisualConstraints),
     ("Update manifest URL uses CDN", TestUpdateManifestUrlUsesCdn),
     ("Update manifest version check", TestUpdateManifest),
     ("Update download avoids locked stale ZIP", TestUpdateDownloadAvoidsLockedStaleZip),
@@ -319,11 +321,69 @@ static async Task TestAnimatedPatternBackground()
 {
     var xaml = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml"));
     var csproj = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "ModernYedek.App.csproj"));
-    Assert(xaml.Contains("Assets/zippattern.png", StringComparison.OrdinalIgnoreCase), "pattern brush image");
+    Assert(xaml.Contains("Assets/premium-pattern.png", StringComparison.OrdinalIgnoreCase), "pattern brush image");
     Assert(xaml.Contains("ZipPatternBrushTransform", StringComparison.Ordinal), "pattern animation transform");
     Assert(xaml.Contains("RepeatBehavior=\"Forever\"", StringComparison.OrdinalIgnoreCase), "pattern loops");
     Assert(xaml.Contains("SidebarTextOutlineEffect", StringComparison.Ordinal), "sidebar text outline");
-    Assert(csproj.Contains("Assets\\zippattern.png", StringComparison.OrdinalIgnoreCase), "pattern resource included");
+    Assert(csproj.Contains("Assets\\*.png", StringComparison.OrdinalIgnoreCase), "png resources included");
+}
+
+static async Task TestPremiumVisualAssetSet()
+{
+    var assets = Path.Combine("src", "ModernYedek.App", "Assets");
+    var xaml = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml"));
+    var code = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml.cs"));
+    var csproj = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "ModernYedek.App.csproj"));
+
+    Assert(ReadPngSize(Path.Combine(assets, "premium-pattern.png")) == (1024, 1024), "pattern dimensions");
+    Assert(ReadPngSize(Path.Combine(assets, "premium-header-banner.png")) == (2400, 520), "header dimensions");
+    Assert(ReadPngSize(Path.Combine(assets, "premium-sidebar-texture.png")) == (700, 1600), "sidebar dimensions");
+    Assert(ReadPngSize(Path.Combine(assets, "myedek-icon-master.png")) == (1024, 1024), "icon master dimensions");
+    Assert(ReadPngSize(Path.Combine(assets, "premium-divider.png")) == (1600, 80), "divider dimensions");
+    Assert(ReadPngSize(Path.Combine(assets, "empty-sources.png")) == (1200, 700), "empty sources dimensions");
+    Assert(ReadPngSize(Path.Combine(assets, "empty-targets.png")) == (1200, 700), "empty targets dimensions");
+    Assert(ReadPngSize(Path.Combine(assets, "empty-logs.png")) == (1200, 700), "empty logs dimensions");
+
+    foreach (var icon in new[]
+    {
+        "icon-backup-success.png",
+        "icon-backup-warning.png",
+        "icon-backup-failed.png",
+        "icon-cloud-upload.png",
+        "icon-license-key.png",
+        "icon-encrypted-secrets.png",
+        "icon-schedule-clock.png",
+        "icon-zip-archive.png"
+    })
+    {
+        Assert(ReadPngSize(Path.Combine(assets, icon)) == (256, 256), $"icon dimensions {icon}");
+    }
+
+    Assert(File.Exists(Path.Combine(assets, "myedek.ico")), "ico exists");
+    Assert(xaml.Contains("icon-backup-success.png", StringComparison.OrdinalIgnoreCase), "dashboard status icon referenced");
+    Assert(xaml.Contains("icon-schedule-clock.png", StringComparison.OrdinalIgnoreCase), "dashboard schedule icon referenced");
+    Assert(xaml.Contains("icon-zip-archive.png", StringComparison.OrdinalIgnoreCase), "dashboard zip icon referenced");
+    Assert(xaml.Contains("icon-cloud-upload.png", StringComparison.OrdinalIgnoreCase), "dashboard cloud icon referenced");
+    Assert(xaml.Contains("premium-header-banner.png", StringComparison.OrdinalIgnoreCase), "header asset referenced");
+    Assert(xaml.Contains("premium-sidebar-texture.png", StringComparison.OrdinalIgnoreCase), "sidebar asset referenced");
+    Assert(xaml.Contains("empty-sources.png", StringComparison.OrdinalIgnoreCase), "sources empty art referenced");
+    Assert(xaml.Contains("empty-targets.png", StringComparison.OrdinalIgnoreCase), "targets empty art referenced");
+    Assert(xaml.Contains("empty-logs.png", StringComparison.OrdinalIgnoreCase), "logs empty art referenced");
+    Assert(code.Contains("SourcesEmptyArt.Visibility", StringComparison.Ordinal), "sources empty visibility");
+    Assert(code.Contains("TargetsEmptyArt.Visibility", StringComparison.Ordinal), "targets empty visibility");
+    Assert(code.Contains("LogsEmptyArt.Visibility", StringComparison.Ordinal), "logs empty visibility");
+    Assert(csproj.Contains("<ApplicationIcon>Assets\\myedek.ico</ApplicationIcon>", StringComparison.OrdinalIgnoreCase), "application icon");
+}
+
+static async Task TestResponsiveVisualConstraints()
+{
+    var xaml = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml"));
+    Assert(xaml.Contains("MinWidth=\"1100\"", StringComparison.OrdinalIgnoreCase), "min width below 1366");
+    Assert(xaml.Contains("MinHeight=\"720\"", StringComparison.OrdinalIgnoreCase), "min height below 768");
+    Assert(xaml.Contains("<ScrollViewer Grid.Row=\"1\" VerticalScrollBarVisibility=\"Auto\">", StringComparison.OrdinalIgnoreCase), "scrollable content");
+    Assert(xaml.Contains("Opacity=\"0.10\"", StringComparison.OrdinalIgnoreCase), "subtle background opacity");
+    Assert(xaml.Contains("<ColumnDefinition Width=\"236\"/>", StringComparison.OrdinalIgnoreCase), "bounded sidebar width");
+    Assert(xaml.Contains("<RowDefinition Height=\"136\"/>", StringComparison.OrdinalIgnoreCase), "bounded header height");
 }
 
 static async Task TestUpdateManifestUrlUsesCdn()
@@ -340,9 +400,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.16",
+              "version": "1.0.17",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.16.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.17.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -354,16 +414,16 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.16", "update version");
+    Assert(result.Manifest.Version == "1.0.17", "update version");
 }
 
 static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 {
     var root = CreateTempRoot();
-    var url = "https://updates.test/releases/ModernYedek-1.0.16.zip";
+    var url = "https://updates.test/releases/ModernYedek-1.0.17.zip";
     var payload = "fake update payload";
     var sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
-    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.16.zip");
+    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.17.zip");
     await File.WriteAllTextAsync(staleZipPath, "locked old file");
 
     await using var locked = new FileStream(staleZipPath, FileMode.Open, FileAccess.Read, FileShare.None);
@@ -374,14 +434,14 @@ static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 
     var path = await new UpdateClient(http).DownloadAndVerifyAsync(new UpdateManifest
     {
-        Version = "1.0.16",
+        Version = "1.0.17",
         Url = url,
         Sha256 = sha256
     }, root);
 
     Assert(File.Exists(path), "downloaded update exists");
     Assert(!string.Equals(path, staleZipPath, StringComparison.OrdinalIgnoreCase), "download path is unique");
-    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.16-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
+    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.17-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
     Assert(!File.Exists(path + ".download"), "partial download renamed");
 }
 
@@ -429,6 +489,17 @@ static string CreateTempRoot()
     var path = Path.Combine(Path.GetTempPath(), "ModernYedekTests", Guid.NewGuid().ToString("N"));
     Directory.CreateDirectory(path);
     return path;
+}
+
+static (int Width, int Height) ReadPngSize(string path)
+{
+    Assert(File.Exists(path), $"png exists {path}");
+    var bytes = File.ReadAllBytes(path);
+    Assert(bytes.Length >= 24, $"png header length {path}");
+    Assert(bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47, $"png signature {path}");
+    var width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
+    var height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
+    return (width, height);
 }
 
 static void Assert(bool condition, string name)
