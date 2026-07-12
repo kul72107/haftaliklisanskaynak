@@ -24,7 +24,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Animated pattern background", TestAnimatedPatternBackground),
     ("Premium visual asset set", TestPremiumVisualAssetSet),
     ("Responsive visual constraints", TestResponsiveVisualConstraints),
-    ("Update manifest URL uses CDN", TestUpdateManifestUrlUsesCdn),
+    ("Update manifest URL avoids stale CDN", TestUpdateManifestUrlAvoidsStaleCdn),
     ("Update manifest version check", TestUpdateManifest),
     ("Update download avoids locked stale ZIP", TestUpdateDownloadAvoidsLockedStaleZip),
     ("License cache offline window", TestLicenseCache),
@@ -386,13 +386,12 @@ static async Task TestResponsiveVisualConstraints()
     Assert(xaml.Contains("<RowDefinition Height=\"136\"/>", StringComparison.OrdinalIgnoreCase), "bounded header height");
 }
 
-static async Task TestUpdateManifestUrlUsesCdn()
+static async Task TestUpdateManifestUrlAvoidsStaleCdn()
 {
     var code = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml.cs"));
-    Assert(UpdateSettings.DefaultManifestUrl.Contains("cdn.jsdelivr.net", StringComparison.OrdinalIgnoreCase), "default update cdn");
-    Assert(!UpdateSettings.DefaultManifestUrl.Contains("@main", StringComparison.OrdinalIgnoreCase), "default update cdn avoids main cache");
-    Assert(code.Contains("LegacyRawManifestUrl", StringComparison.Ordinal), "legacy raw migration");
+    Assert(UpdateSettings.DefaultManifestUrl.Contains("raw.githubusercontent.com", StringComparison.OrdinalIgnoreCase), "default update raw");
     Assert(code.Contains("LegacyCdnMainManifestUrl", StringComparison.Ordinal), "legacy cdn main migration");
+    Assert(code.Contains("LegacyCdnHeadManifestUrl", StringComparison.Ordinal), "legacy cdn head migration");
 }
 
 static async Task TestUpdateManifest()
@@ -402,9 +401,9 @@ static async Task TestUpdateManifest()
     {
         [manifestUrl] = """
             {
-              "version": "1.0.18",
+              "version": "1.0.19",
               "mandatory": true,
-              "url": "https://updates.test/releases/ModernYedek-1.0.18.zip",
+              "url": "https://updates.test/releases/ModernYedek-1.0.19.zip",
               "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
               "notes": "unit test"
             }
@@ -416,16 +415,16 @@ static async Task TestUpdateManifest()
     Assert(result.HasUpdate, "update available");
     Assert(result.Manifest is not null, "update manifest");
     Assert(result.Manifest!.Mandatory, "update mandatory");
-    Assert(result.Manifest.Version == "1.0.18", "update version");
+    Assert(result.Manifest.Version == "1.0.19", "update version");
 }
 
 static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 {
     var root = CreateTempRoot();
-    var url = "https://updates.test/releases/ModernYedek-1.0.18.zip";
+    var url = "https://updates.test/releases/ModernYedek-1.0.19.zip";
     var payload = "fake update payload";
     var sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload)));
-    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.18.zip");
+    var staleZipPath = Path.Combine(root, "ModernYedek-1.0.19.zip");
     await File.WriteAllTextAsync(staleZipPath, "locked old file");
 
     await using var locked = new FileStream(staleZipPath, FileMode.Open, FileAccess.Read, FileShare.None);
@@ -436,14 +435,14 @@ static async Task TestUpdateDownloadAvoidsLockedStaleZip()
 
     var path = await new UpdateClient(http).DownloadAndVerifyAsync(new UpdateManifest
     {
-        Version = "1.0.18",
+        Version = "1.0.19",
         Url = url,
         Sha256 = sha256
     }, root);
 
     Assert(File.Exists(path), "downloaded update exists");
     Assert(!string.Equals(path, staleZipPath, StringComparison.OrdinalIgnoreCase), "download path is unique");
-    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.18-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
+    Assert(Path.GetFileName(path).StartsWith("ModernYedek-1.0.19-", StringComparison.OrdinalIgnoreCase), "download path has version prefix");
     Assert(!File.Exists(path + ".download"), "partial download renamed");
 }
 

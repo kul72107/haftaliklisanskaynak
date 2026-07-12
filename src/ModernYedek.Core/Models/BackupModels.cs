@@ -125,9 +125,9 @@ public sealed class LicenseSettings
 
 public sealed class UpdateSettings
 {
-    public const string LegacyRawManifestUrl = "https://raw.githubusercontent.com/kul72107/Yedek-app/main/latest.json";
     public const string LegacyCdnMainManifestUrl = "https://cdn.jsdelivr.net/gh/kul72107/Yedek-app@main/latest.json";
-    public const string DefaultManifestUrl = "https://cdn.jsdelivr.net/gh/kul72107/Yedek-app/latest.json";
+    public const string LegacyCdnHeadManifestUrl = "https://cdn.jsdelivr.net/gh/kul72107/Yedek-app/latest.json";
+    public const string DefaultManifestUrl = "https://raw.githubusercontent.com/kul72107/Yedek-app/main/latest.json";
 
     public bool Enabled { get; set; } = true;
     public string ManifestUrl { get; set; } = DefaultManifestUrl;
