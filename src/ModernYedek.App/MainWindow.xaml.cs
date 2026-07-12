@@ -48,6 +48,9 @@ public partial class MainWindow : Window
     private DateTimeOffset _lastForegroundLicenseCheckAt = DateTimeOffset.MinValue;
     private DateTimeOffset _lastForegroundUpdateCheckAt = DateTimeOffset.MinValue;
     private string? _lastScheduleFireKey;
+    private readonly HttpClient _httpClient;
+    private readonly HttpClient _signalHttpClient;
+    private CancellationTokenSource? _licenseCancellationTokenSource;
 
     public MainWindow()
     {
@@ -60,6 +63,8 @@ public partial class MainWindow : Window
         _licenseCacheService = new LicenseCacheService(_secretStore);
         _logger = new JsonLinesBackupLogger(_paths.LogFile);
         _settings = SettingsService.CreateDefault();
+        _httpClient = CreateLicenseHttpClient(TimeSpan.FromSeconds(15));
+        _signalHttpClient = CreateLicenseHttpClient(TimeSpan.FromSeconds(5));
         ConfigureTrayIcon();
 
         _schedulerTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
@@ -161,7 +166,19 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         DisposeTrayIcon();
+        _licenseCancellationTokenSource?.Cancel();
+        _licenseCancellationTokenSource?.Dispose();
+        _httpClient.Dispose();
+        _signalHttpClient.Dispose();
         base.OnClosed(e);
+    }
+
+    private static HttpClient CreateLicenseHttpClient(TimeSpan timeout)
+    {
+        var client = new HttpClient { Timeout = timeout };
+        var version = typeof(MainWindow).Assembly.GetName().Version?.ToString() ?? "unknown";
+        client.DefaultRequestHeaders.Add("User-Agent", $"ModernYedek/{version}");
+        return client;
     }
 
     private void ConfigureTrayIcon()
@@ -804,8 +821,13 @@ public partial class MainWindow : Window
                 return;
             }
 
-            LicenseStateText.Text = "Lisans aktiflestiriliyor...";
-            var result = await ActivateStaticLicenseAsync(key);
+            _licenseCancellationTokenSource?.Cancel();
+            _licenseCancellationTokenSource?.Dispose();
+            _licenseCancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = _licenseCancellationTokenSource.Token;
+
+            LicenseStateText.Text = "Lisans kontrol ediliyor...";
+            var result = await ActivateStaticLicenseAsync(key, cancellationToken);
             await SaveLicenseResultAsync(key, result);
             await _settingsService.SaveAsync(_settings);
             if (!result.IsValid && ShouldClearLocalLicenseResult(result))
@@ -847,7 +869,13 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var result = await ValidateLicenseOnlineAsync(key);
+            _licenseCancellationTokenSource?.Cancel();
+            _licenseCancellationTokenSource?.Dispose();
+            _licenseCancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = _licenseCancellationTokenSource.Token;
+
+            LicenseStateText.Text = "Lisans dogrulaniyor...";
+            var result = await ValidateLicenseOnlineAsync(key, cancellationToken);
             await SaveLicenseResultAsync(key, result);
             await _settingsService.SaveAsync(_settings);
             if (!result.IsValid && ShouldClearLocalLicenseResult(result))
@@ -874,6 +902,27 @@ public partial class MainWindow : Window
             StatusBarText.Text = "Lisans dogrulama basarisiz.";
             LicenseDetailText.Text = ex.Message;
             ShowError(ex.Message, "Lisans dogrulama basarisiz");
+        }
+    }
+
+    private async void ClearLicenseCache_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _licenseCancellationTokenSource?.Cancel();
+            _licenseCancellationTokenSource?.Dispose();
+            _licenseCancellationTokenSource = null;
+
+            await _licenseCacheService.ClearAsync();
+            LicenseKeyBox.Clear();
+            ClearLocalLicenseUi("Yerel lisans onbellegi temizlendi. Yeni key girebilirsiniz.");
+            StatusBarText.Text = "Yerel lisans onbellegi temizlendi.";
+            ShowSuccess("Yerel lisans onbellegi temizlendi. Yeni bir key ile aktiflestirme yapabilirsiniz.");
+        }
+        catch (Exception ex)
+        {
+            StatusBarText.Text = "Onbellek temizleme basarisiz.";
+            ShowError(ex.Message, "Onbellek temizleme hatasi");
         }
     }
 
@@ -1074,7 +1123,7 @@ public partial class MainWindow : Window
             cache = await _licenseCacheService.LoadAsync();
             if (LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
             {
-                var authority = await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup: false);
+                var authority = await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup: false, CancellationToken.None);
                 if (!authority)
                 {
                     return false;
@@ -1090,23 +1139,24 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<LicenseValidationResult> ValidateLicenseOnlineAsync(string licenseKey)
+    private async Task<LicenseValidationResult> ValidateLicenseOnlineAsync(string licenseKey, CancellationToken cancellationToken = default)
     {
-        var cache = await _licenseCacheService.LoadAsync();
+        var cache = await _licenseCacheService.LoadAsync(cancellationToken);
         var existingResult = IsCachedLicenseForKey(cache, licenseKey)
             ? cache!.LastResult
             : null;
 
-        return await new StaticLicenseClient().ValidateExistingAsync(
+        return await new StaticLicenseClient(_httpClient).ValidateExistingAsync(
             licenseKey,
             _settings.License,
             MachineIdentity.Current(),
-            existingResult);
+            existingResult,
+            cancellationToken);
     }
 
-    private async Task<LicenseValidationResult> ActivateStaticLicenseAsync(string licenseKey)
+    private async Task<LicenseValidationResult> ActivateStaticLicenseAsync(string licenseKey, CancellationToken cancellationToken = default)
     {
-        var cache = await _licenseCacheService.LoadAsync();
+        var cache = await _licenseCacheService.LoadAsync(cancellationToken);
         if (IsCachedLicenseForKey(cache, licenseKey)
             && !LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
         {
@@ -1136,7 +1186,7 @@ public partial class MainWindow : Window
 
         if (IsCachedLicenseUsableForKey(cache, licenseKey))
         {
-            if (!await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup: false))
+            if (!await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup: false, cancellationToken))
             {
                 return cache!.LastResult;
             }
@@ -1161,11 +1211,11 @@ public partial class MainWindow : Window
             };
         }
 
-        var client = new StaticLicenseClient();
-        var result = await client.ActivateAsync(licenseKey, _settings.License, MachineIdentity.Current());
+        var client = new StaticLicenseClient(_httpClient);
+        var result = await client.ActivateAsync(licenseKey, _settings.License, MachineIdentity.Current(), cancellationToken);
         if (result.IsValid)
         {
-            await TrySendActivationSignalAsync(result);
+            _ = Task.Run(async () => await TrySendActivationSignalAsync(result).ConfigureAwait(false), cancellationToken);
         }
 
         return result;
@@ -1193,7 +1243,7 @@ public partial class MainWindow : Window
                 Note = result.Note
             };
 
-            _ = await new LicenseActivationSignalClient().SendAsync(_settings.License, signal);
+            _ = await new LicenseActivationSignalClient(_signalHttpClient).SendAsync(_settings.License, signal);
         }
         catch
         {
@@ -1222,7 +1272,7 @@ public partial class MainWindow : Window
                 Note = note
             };
 
-            _ = await new LicenseRevocationSignalClient().SendAsync(_settings.License, signal);
+            _ = await new LicenseRevocationSignalClient(_signalHttpClient).SendAsync(_settings.License, signal);
         }
         catch
         {
@@ -1254,10 +1304,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        _ = await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup);
+        _ = await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup, CancellationToken.None);
     }
 
-    private async Task<bool> EnsureCachedLicenseStillAuthorizedAsync(LicenseCache cache, bool showPopup)
+    private async Task<bool> EnsureCachedLicenseStillAuthorizedAsync(LicenseCache cache, bool showPopup, CancellationToken cancellationToken = default)
     {
         if (!cache.LastResult.IsValid)
         {
@@ -1270,11 +1320,12 @@ public partial class MainWindow : Window
 
         try
         {
-            var result = await new StaticLicenseClient().ValidateExistingAsync(
+            var result = await new StaticLicenseClient(_httpClient).ValidateExistingAsync(
                 cache.LicenseKey,
                 _settings.License,
                 MachineIdentity.Current(),
-                cache.LastResult);
+                cache.LastResult,
+                cancellationToken);
 
             cache.LastRevocationCheckAt = DateTimeOffset.UtcNow;
             cache.LicenseListUrl = _settings.License.LicenseListUrl;

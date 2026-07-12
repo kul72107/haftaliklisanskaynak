@@ -331,7 +331,11 @@
     };
 
     function normalizeKey(value) {
-      return value.trim().toUpperCase();
+      return value
+        .normalize("NFKC")
+        .replace(/[\s\u0000-\u001F\u007F\u200B-\u200D\uFEFF]/g, "")
+        .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, "-")
+        .toUpperCase();
     }
 
     function cleanNote(value) {

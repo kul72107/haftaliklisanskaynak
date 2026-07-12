@@ -199,6 +199,8 @@ static async Task TestStaticTxtLicense()
 {
     var key = "MY-TXT-TEST-0001";
     var hash = StaticLicenseClient.HashLicenseKey(key);
+    var messyKey = " \u200Bmy\u2011txt\u2013test\u20140001 ";
+    Assert(StaticLicenseClient.HashLicenseKey(messyKey) == hash, "static license key normalization");
     var listUrl = "https://license.test/licenses.txt";
     var revokedUrl = "https://license.test/revoked.txt";
     using var http = new HttpClient(new FakeLicenseHttpHandler(new Dictionary<string, string>

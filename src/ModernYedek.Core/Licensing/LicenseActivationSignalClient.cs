@@ -7,9 +7,9 @@ public sealed class LicenseActivationSignalClient
 {
     private readonly HttpClient _httpClient;
 
-    public LicenseActivationSignalClient(HttpClient? httpClient = null)
+    public LicenseActivationSignalClient(HttpClient httpClient)
     {
-        _httpClient = httpClient ?? new HttpClient();
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
     public async Task<bool> SendAsync(

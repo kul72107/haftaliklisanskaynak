@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Globalization;
 using ModernYedek.Core.Models;
 
 namespace ModernYedek.Core.Licensing;
@@ -8,9 +9,9 @@ public sealed class StaticLicenseClient
 {
     private readonly HttpClient _httpClient;
 
-    public StaticLicenseClient(HttpClient? httpClient = null)
+    public StaticLicenseClient(HttpClient httpClient)
     {
-        _httpClient = httpClient ?? new HttpClient();
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
     public async Task<LicenseValidationResult> ActivateAsync(
@@ -215,7 +216,12 @@ public sealed class StaticLicenseClient
         LicenseSettings settings,
         CancellationToken cancellationToken)
     {
-        var revocation = await CheckRevocationAsync(hash, settings.RevokedListUrl, cancellationToken);
+        var revocationTask = CheckRevocationAsync(hash, settings.RevokedListUrl, cancellationToken);
+        var licensesTask = TryLoadLicensesAsync(settings.LicenseListUrl, cancellationToken);
+
+        await Task.WhenAll(revocationTask, licensesTask);
+
+        var revocation = await revocationTask;
         if (!revocation.Success)
         {
             return StaticLicenseRecordCheck.Invalid(Invalid($"Iptal listesi kontrol edilemedi: {revocation.Message}", hash));
@@ -226,8 +232,13 @@ public sealed class StaticLicenseClient
             return StaticLicenseRecordCheck.Invalid(Invalid("Bu lisans iptal edilmis.", hash));
         }
 
-        var licenses = await LoadLicensesAsync(settings.LicenseListUrl, cancellationToken);
-        var match = licenses.FirstOrDefault(license => string.Equals(license.Hash, hash, StringComparison.OrdinalIgnoreCase));
+        var licensesResult = await licensesTask;
+        if (!licensesResult.Success)
+        {
+            return StaticLicenseRecordCheck.Invalid(Invalid($"Lisans listesi kontrol edilemedi: {licensesResult.Message}", hash));
+        }
+
+        var match = licensesResult.Records.FirstOrDefault(license => string.Equals(license.Hash, hash, StringComparison.OrdinalIgnoreCase));
         if (match is null)
         {
             return StaticLicenseRecordCheck.Invalid(Invalid("Lisans listesinde bu key bulunamadi.", hash));
@@ -239,6 +250,19 @@ public sealed class StaticLicenseClient
         }
 
         return StaticLicenseRecordCheck.Valid(match);
+    }
+
+    private async Task<LicenseListLoadResult> TryLoadLicensesAsync(string url, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var records = await LoadLicensesAsync(url, cancellationToken);
+            return new LicenseListLoadResult { Success = true, Records = records };
+        }
+        catch (Exception ex)
+        {
+            return new LicenseListLoadResult { Success = false, Message = ex.Message };
+        }
     }
 
     private static LicenseValidationResult Invalid(string message, string hash)
@@ -256,7 +280,30 @@ public sealed class StaticLicenseClient
 
     private static string NormalizeKey(string licenseKey)
     {
-        return licenseKey.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(licenseKey))
+        {
+            return string.Empty;
+        }
+
+        var normalized = licenseKey.Normalize(NormalizationForm.FormKC);
+        var builder = new StringBuilder(normalized.Length);
+        foreach (var character in normalized)
+        {
+            var category = CharUnicodeInfo.GetUnicodeCategory(character);
+            if (char.IsWhiteSpace(character) || char.IsControl(character) || category == UnicodeCategory.Format)
+            {
+                continue;
+            }
+
+            builder.Append(IsDashLike(character) ? '-' : char.ToUpperInvariant(character));
+        }
+
+        return builder.ToString();
+    }
+
+    private static bool IsDashLike(char character)
+    {
+        return character is '\u2010' or '\u2011' or '\u2012' or '\u2013' or '\u2014' or '\u2015' or '\u2212';
     }
 
     private static string BuildInstanceId(string hash, string machineId)
@@ -288,5 +335,12 @@ public sealed class StaticLicenseClient
         {
             return new StaticLicenseRecordCheck { IsValid = false, Result = result };
         }
+    }
+
+    private sealed class LicenseListLoadResult
+    {
+        public bool Success { get; init; }
+        public List<StaticLicenseRecord> Records { get; init; } = [];
+        public string Message { get; init; } = string.Empty;
     }
 }
