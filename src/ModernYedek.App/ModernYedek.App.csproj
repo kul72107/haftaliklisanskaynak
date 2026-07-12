@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\ModernYedek.Core\ModernYedek.Core.csproj" />
@@ -11,9 +11,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <Version>1.0.22</Version>
-    <AssemblyVersion>1.0.22.0</AssemblyVersion>
-    <FileVersion>1.0.22.0</FileVersion>
+    <Version>1.0.23</Version>
+    <AssemblyVersion>1.0.23.0</AssemblyVersion>
+    <FileVersion>1.0.23.0</FileVersion>
     <Company>ResurrectSoft</Company>
     <Authors>ResurrectSoft</Authors>
     <Product>MYedek</Product>
@@ -41,3 +41,4 @@
   </Target>
 
 </Project>
+

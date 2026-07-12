@@ -466,6 +466,19 @@ public partial class MainWindow : Window
         PatternOpacityValueText.Text = value.ToString("0.00", CultureInfo.InvariantCulture);
     }
 
+    private void SidebarOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (SidebarTextureBrush is null || SidebarOverlayBrush is null || SidebarOpacityValueText is null)
+        {
+            return;
+        }
+
+        var value = Math.Round(e.NewValue, 2);
+        SidebarTextureBrush.Opacity = value;
+        SidebarOverlayBrush.Opacity = Math.Round(Math.Max(0, 0.78 - value * 0.78), 3);
+        SidebarOpacityValueText.Text = value.ToString("0.00", CultureInfo.InvariantCulture);
+    }
+
     private void ApplyTooltipsEnabled(DependencyObject current, bool enabled, HashSet<DependencyObject> visited)
     {
         if (!visited.Add(current))

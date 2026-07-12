@@ -175,12 +175,17 @@
 
         <Border Grid.Column="0" ToolTip="Sol menü. Uygulamanın farklı ayar ve izleme sayfalarına buradan geçersiniz.">
             <Border.Background>
-                <ImageBrush ImageSource="pack://application:,,,/Assets/premium-sidebar-texture.png"
+                <ImageBrush x:Name="SidebarTextureBrush"
+                            ImageSource="pack://application:,,,/Assets/premium-sidebar-texture.png"
                             Stretch="UniformToFill"
                             AlignmentX="Right"
-                            AlignmentY="Top"/>
+                            AlignmentY="Top"
+                            Opacity="1"/>
             </Border.Background>
-            <DockPanel LastChildFill="True" Background="#920F071C">
+            <DockPanel LastChildFill="True">
+                <DockPanel.Background>
+                    <SolidColorBrush x:Name="SidebarOverlayBrush" Color="#0F071C" Opacity="0.57"/>
+                </DockPanel.Background>
                 <StackPanel DockPanel.Dock="Top" Margin="18,20,18,18">
                     <Image Source="pack://application:,,,/Assets/myedek-icon-master.png" Width="54" Height="54" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,0,0,8" ToolTip="MYedek uygulama ikonu."/>
                     <TextBlock Text="MYedek" Foreground="White" FontSize="23" FontWeight="Bold" Effect="{StaticResource SidebarTextOutlineEffect}" ToolTip="Uygulamanın ana adı. Bu araç dosya ve klasörlerinizi yedeklemek için kullanılır."/>
@@ -648,6 +653,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="StatusBarText" Text="Hazır" VerticalAlignment="Center" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis" ToolTip="Son işlem durumu ve kısa bilgilendirme mesajları burada görünür."/>
                     <TextBlock x:Name="LicenseRemainingText" Grid.Column="1" Text="Lisans: yok" VerticalAlignment="Center" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Margin="18,0,0,0" ToolTip="Sahip olunan aktif lisanstan kaç gün kaldığını gösterir."/>
@@ -665,7 +671,21 @@
                                 ValueChanged="PatternOpacitySlider_ValueChanged"/>
                         <TextBlock x:Name="PatternOpacityValueText" Text="0.18" Width="38" VerticalAlignment="Center" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Margin="8,0,0,0"/>
                     </StackPanel>
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0" ToolTip="Geçici test kontrolü. Sidebar texture opaklığını canlı değiştirir; en sağ değer dokuyu tam opak yapar.">
+                        <TextBlock Text="Sidebar" VerticalAlignment="Center" Foreground="{StaticResource Muted}" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                        <Slider x:Name="SidebarOpacitySlider"
+                                Width="110"
+                                Minimum="0"
+                                Maximum="1"
+                                Value="1"
+                                SmallChange="0.01"
+                                LargeChange="0.05"
+                                TickFrequency="0.01"
+                                VerticalAlignment="Center"
+                                ValueChanged="SidebarOpacitySlider_ValueChanged"/>
+                        <TextBlock x:Name="SidebarOpacityValueText" Text="1.00" Width="38" VerticalAlignment="Center" Foreground="{StaticResource Ink}" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
                         <TextBlock Text="WhatsApp iletişim: 05300221838" VerticalAlignment="Center" Foreground="#128C4A" FontWeight="Bold" ToolTip="Lisans veya destek için WhatsApp iletişim numarası."/>
                         <CheckBox x:Name="TooltipsEnabledCheck"
                                   Content="Açıklamalar"
