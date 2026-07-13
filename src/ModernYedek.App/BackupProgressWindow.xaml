@@ -1,0 +1,57 @@
+<Window x:Class="ModernYedek.App.BackupProgressWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Yedekleme" Width="520" Height="230"
+        MinWidth="520" MinHeight="230"
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Grid Background="#F8F5FC">
+        <Border Background="#FFFEFF"
+                BorderBrush="#E6DDF4"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="22"
+                Margin="14">
+            <StackPanel>
+                <TextBlock Text="Yedekleme"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="#21172F"/>
+                <TextBlock x:Name="StageText"
+                           Text="Hazirlaniyor"
+                           Margin="0,8,0,0"
+                           Foreground="#21172F"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"/>
+
+                <Grid Margin="0,14,0,0">
+                    <ProgressBar x:Name="ProgressValueBar"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Height="22"
+                                 Value="0"/>
+                    <TextBlock x:Name="PercentText"
+                               Text="0%"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#21172F"/>
+                </Grid>
+
+                <TextBlock x:Name="DetailText"
+                           Text="Yedekleme baslatiliyor."
+                           Margin="0,12,0,0"
+                           Foreground="#71647F"
+                           TextWrapping="Wrap"/>
+                <TextBlock x:Name="FileCountText"
+                           Margin="0,8,0,0"
+                           Foreground="#71647F"/>
+                <TextBlock x:Name="CurrentFileText"
+                           Margin="0,4,0,0"
+                           Foreground="#71647F"
+                           TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

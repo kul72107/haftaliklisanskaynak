@@ -485,7 +485,7 @@ public partial class MainWindow : Window
 
     private void SidebarOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (SidebarTextureBrush is null || SidebarOverlayBrush is null || SidebarOpacityValueText is null)
+        if (SidebarTextureBrush is null || SidebarOverlayBrush is null)
         {
             return;
         }
@@ -493,7 +493,6 @@ public partial class MainWindow : Window
         var value = Math.Round(e.NewValue, 2);
         SidebarTextureBrush.Opacity = value;
         SidebarOverlayBrush.Opacity = Math.Round(Math.Max(0, 0.78 - value * 0.78), 3);
-        SidebarOpacityValueText.Text = value.ToString("0.00", CultureInfo.InvariantCulture);
     }
 
     private void ApplyTooltipsEnabled(DependencyObject current, bool enabled, HashSet<DependencyObject> visited)
@@ -1000,16 +999,12 @@ public partial class MainWindow : Window
             return;
         }
 
+        BackupProgressWindow? progressWindow = null;
         try
         {
             _isRunning = true;
             DashboardStatusText.Text = "Çalışıyor";
             StatusBarText.Text = triggeredBySchedule ? "Zamanlanmış yedek başladı." : "Yedek başlatıldı.";
-            if (!triggeredBySchedule)
-            {
-                ShowInfo("Yedekleme baslatildi. Islem bitince sonuc bildirilecek.");
-            }
-
             CollectSettingsFromUi();
             await _settingsService.SaveAsync(_settings);
             if (!await CheckForUpdatesAsync(showNoUpdateStatus: false, allowOptionalPrompt: false))
@@ -1030,7 +1025,13 @@ public partial class MainWindow : Window
             }
 
             var cloudClient = await CreateCloudClientAsync();
-            var result = await new BackupEngine(_logger).RunAsync(_settings, cloudClient);
+            progressWindow = OpenBackupProgressWindow(triggeredBySchedule);
+            var progress = new Progress<BackupProgress>(value =>
+            {
+                StatusBarText.Text = string.IsNullOrWhiteSpace(value.Message) ? value.Stage : value.Message;
+                progressWindow?.UpdateProgress(value);
+            });
+            var result = await new BackupEngine(_logger).RunAsync(_settings, cloudClient, progress);
 
             DashboardStatusText.Text = result.Outcome.ToString();
             LastArchiveText.Text = result.ArchivePath is null
@@ -1043,6 +1044,8 @@ public partial class MainWindow : Window
 
             await RefreshLogsAsync();
             UpdateDashboard();
+            CloseBackupProgressWindow(progressWindow);
+            progressWindow = null;
             if (!triggeredBySchedule)
             {
                 var message = result.ArchivePath is null
@@ -1062,6 +1065,8 @@ public partial class MainWindow : Window
         {
             DashboardStatusText.Text = "Hata";
             StatusBarText.Text = ex.Message;
+            CloseBackupProgressWindow(progressWindow);
+            progressWindow = null;
             if (!triggeredBySchedule)
             {
                 ShowError(ex.Message, "Yedekleme hatasi");
@@ -1069,8 +1074,38 @@ public partial class MainWindow : Window
         }
         finally
         {
+            CloseBackupProgressWindow(progressWindow);
             _isRunning = false;
         }
+    }
+
+    private BackupProgressWindow? OpenBackupProgressWindow(bool triggeredBySchedule)
+    {
+        var window = new BackupProgressWindow();
+        if (IsVisible)
+        {
+            window.Owner = this;
+        }
+
+        window.UpdateProgress(new BackupProgress
+        {
+            Stage = "Hazirlaniyor",
+            Message = triggeredBySchedule ? "Zamanlanmis yedekleme hazirlaniyor." : "Yedekleme hazirlaniyor.",
+            IsIndeterminate = true
+        });
+        window.Show();
+        return window;
+    }
+
+    private static void CloseBackupProgressWindow(BackupProgressWindow? progressWindow)
+    {
+        if (progressWindow is null)
+        {
+            return;
+        }
+
+        progressWindow.AllowClose();
+        progressWindow.Close();
     }
 
     private async Task<GoogleCloudStorageClient?> CreateCloudClientAsync()

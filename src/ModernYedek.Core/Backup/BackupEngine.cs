@@ -21,6 +21,7 @@ public sealed class BackupEngine
     public async Task<BackupRunResult> RunAsync(
         BackupSettings settings,
         ICloudStorageClient? cloudClient = null,
+        IProgress<BackupProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var result = new BackupRunResult
@@ -29,22 +30,26 @@ public sealed class BackupEngine
             StartedAt = DateTimeOffset.Now
         };
 
+        ReportProgress(progress, 0, "Baslatiliyor", "Yedekleme basladi.", isIndeterminate: true);
         await LogAsync(result, BackupLogLevel.Info, "RUN_STARTED", "Yedekleme basladi.", cancellationToken: cancellationToken);
 
         var sources = settings.Sources.Where(source => source.Enabled).ToList();
         var targets = settings.Targets.Where(target => target.Enabled).ToList();
         if (sources.Count == 0)
         {
+            ReportProgress(progress, 0, "Basarisiz", "Etkin kaynak yok.");
             await FailAsync(result, "NO_SOURCE", "Etkin kaynak yok.", cancellationToken);
             return result;
         }
 
         if (targets.Count == 0)
         {
+            ReportProgress(progress, 0, "Basarisiz", "Etkin hedef yok.");
             await FailAsync(result, "NO_TARGET", "Etkin hedef yok.", cancellationToken);
             return result;
         }
 
+        ReportProgress(progress, 3, "Kaynaklar kontrol ediliyor", $"Etkin kaynak kontrol ediliyor: {sources.Count}");
         var sourceValidationFailed = false;
         foreach (var source in sources)
         {
@@ -61,6 +66,7 @@ public sealed class BackupEngine
 
         if (sourceValidationFailed)
         {
+            ReportProgress(progress, 3, "Basarisiz", "Kaynak dogrulamasi basarisiz.");
             await FailAsync(result, "VALIDATION_FAILED", "Kaynak dogrulamasi basarisiz.", cancellationToken);
             return result;
         }
@@ -68,20 +74,39 @@ public sealed class BackupEngine
         long estimatedBytes;
         try
         {
+            ReportProgress(progress, 6, "Kaynaklar olculuyor", "Toplam yedek boyutu hesaplaniyor.", isIndeterminate: true);
             estimatedBytes = EstimateSourceBytes(sources);
         }
         catch (Exception ex)
         {
+            ReportProgress(progress, 6, "Basarisiz", $"Kaynak boyutu hesaplanamadi: {ex.Message}");
             await FailAsync(result, "SOURCE_ESTIMATE_FAILED", $"Kaynak boyutu hesaplanamadi: {ex.Message}", cancellationToken);
             return result;
         }
 
+        var totalFiles = CountSourceFilesSafe(sources);
+        var targetIndex = 0;
         foreach (var target in targets)
         {
+            targetIndex++;
             cancellationToken.ThrowIfCancellationRequested();
+            ReportProgress(
+                progress,
+                10,
+                "Hedef kontrol ediliyor",
+                $"Hedef kontrol ediliyor ({targetIndex}/{targets.Count}): {target.Path}",
+                totalFiles: totalFiles * targets.Count,
+                targetPath: target.Path);
 
             if (!PrepareTarget(target.Path, estimatedBytes, out var validationMessage))
             {
+                ReportProgress(
+                    progress,
+                    10,
+                    "Hedef hazir degil",
+                    validationMessage,
+                    totalFiles: totalFiles * targets.Count,
+                    targetPath: target.Path);
                 await LogAsync(result, BackupLogLevel.Error, "TARGET_NOT_READY", validationMessage, target: target.Path, cancellationToken: cancellationToken);
                 continue;
             }
@@ -92,7 +117,8 @@ public sealed class BackupEngine
             var archivePath = Path.Combine(targetRunDirectory, archiveName);
             Directory.CreateDirectory(targetRunDirectory);
 
-            var archiveResult = await Task.Run(() => CreateArchive(sources, archivePath, result.OperationId, cancellationToken), cancellationToken);
+            var archiveProgress = new ArchiveProgressState(progress, estimatedBytes, totalFiles, targets.Count, targetIndex, target.Path);
+            var archiveResult = await Task.Run(() => CreateArchive(sources, archivePath, result.OperationId, archiveProgress, cancellationToken), cancellationToken);
             result.FilesAdded += archiveResult.FilesAdded;
             result.FilesSkipped += archiveResult.FilesSkipped;
 
@@ -104,16 +130,50 @@ public sealed class BackupEngine
 
             if (!archiveResult.Success)
             {
+                ReportProgress(
+                    progress,
+                    archiveProgress.CurrentPercent,
+                    "ZIP olusturulamadi",
+                    archiveResult.Message,
+                    archiveProgress.FilesProcessed,
+                    archiveProgress.TotalFiles,
+                    targetPath: target.Path);
                 await LogAsync(result, BackupLogLevel.Error, "ZIP_FAILED", archiveResult.Message, target: target.Path, cancellationToken: cancellationToken);
                 continue;
             }
 
+            var postTargetBase = 75 + (targetIndex - 1) * (15d / targets.Count);
+            var postTargetStep = 15d / targets.Count;
+            ReportProgress(
+                progress,
+                postTargetBase + postTargetStep * 0.25,
+                "ZIP dogrulaniyor",
+                $"ZIP dogrulaniyor: {archivePath}",
+                archiveProgress.FilesProcessed,
+                archiveProgress.TotalFiles,
+                targetPath: target.Path);
             if (!ValidateArchive(archivePath, out var validateMessage))
             {
+                ReportProgress(
+                    progress,
+                    postTargetBase + postTargetStep * 0.25,
+                    "ZIP dogrulanamadi",
+                    validateMessage,
+                    archiveProgress.FilesProcessed,
+                    archiveProgress.TotalFiles,
+                    targetPath: target.Path);
                 await LogAsync(result, BackupLogLevel.Error, "ZIP_VALIDATE_FAILED", validateMessage, target: target.Path, cancellationToken: cancellationToken);
                 continue;
             }
 
+            ReportProgress(
+                progress,
+                postTargetBase + postTargetStep * 0.50,
+                "SHA256 hesaplaniyor",
+                $"SHA256 hesaplaniyor: {archivePath}",
+                archiveProgress.FilesProcessed,
+                archiveProgress.TotalFiles,
+                targetPath: target.Path);
             var hash = await ComputeSha256Async(archivePath, cancellationToken);
             var info = new FileInfo(archivePath);
             result.ArchivePath ??= archivePath;
@@ -123,10 +183,11 @@ public sealed class BackupEngine
 
             if (settings.Cloud.Enabled && settings.Cloud.UploadAfterBackup && cloudClient is not null)
             {
-                await UploadToCloudAsync(settings, cloudClient, archivePath, hash, result, cancellationToken);
+                await UploadToCloudAsync(settings, cloudClient, archivePath, hash, result, progress, archiveProgress, postTargetBase + postTargetStep * 0.75, cancellationToken);
             }
         }
 
+        ReportProgress(progress, 95, "Eski yedekler temizleniyor", "Retention kurallari uygulaniyor.", totalFiles: totalFiles * targets.Count);
         foreach (var entry in _retentionService.Apply(settings, result.OperationId))
         {
             result.Entries.Add(entry);
@@ -141,6 +202,13 @@ public sealed class BackupEngine
                 : BackupOutcome.Success;
 
         await LogAsync(result, result.Outcome == BackupOutcome.Failed ? BackupLogLevel.Error : BackupLogLevel.Info, "RUN_FINISHED", $"Yedekleme bitti: {result.Outcome}", cancellationToken: cancellationToken);
+        ReportProgress(
+            progress,
+            100,
+            result.Outcome == BackupOutcome.Failed ? "Yedekleme basarisiz" : "Yedekleme tamamlandi",
+            $"Yedekleme bitti: {result.Outcome}",
+            totalFiles * targets.Count,
+            totalFiles * targets.Count);
         return result;
     }
 
@@ -150,6 +218,9 @@ public sealed class BackupEngine
         string archivePath,
         string sha256,
         BackupRunResult result,
+        IProgress<BackupProgress>? progress,
+        ArchiveProgressState archiveProgress,
+        double percent,
         CancellationToken cancellationToken)
     {
         var prefix = (settings.Cloud.ObjectPrefix ?? string.Empty).Trim('/').Replace('\\', '/');
@@ -157,6 +228,14 @@ public sealed class BackupEngine
             ? Path.GetFileName(archivePath)
             : $"{prefix}/{DateTime.Now:yyyy/MM}/{Path.GetFileName(archivePath)}";
 
+        ReportProgress(
+            progress,
+            percent,
+            "Buluta yukleniyor",
+            $"Buluta yukleniyor: {objectName}",
+            archiveProgress.FilesProcessed,
+            archiveProgress.TotalFiles,
+            targetPath: settings.Cloud.BucketName);
         var uploadResult = await cloudClient.UploadAsync(new CloudUploadRequest
         {
             BucketName = settings.Cloud.BucketName,
@@ -181,6 +260,14 @@ public sealed class BackupEngine
         if (uploadResult.Success && settings.Cloud.DeleteLocalAfterUpload)
         {
             File.Delete(archivePath);
+            ReportProgress(
+                progress,
+                percent,
+                "Yerel ZIP siliniyor",
+                "Bulut yuklemesi sonrasi yerel ZIP siliniyor.",
+                archiveProgress.FilesProcessed,
+                archiveProgress.TotalFiles,
+                targetPath: archivePath);
             await LogAsync(result, BackupLogLevel.Info, "LOCAL_ARCHIVE_DELETED", "Bulut yuklemesi sonrasi yerel ZIP silindi.", target: archivePath, cancellationToken: cancellationToken);
         }
     }
@@ -189,6 +276,7 @@ public sealed class BackupEngine
         IReadOnlyCollection<BackupSource> sources,
         string archivePath,
         string operationId,
+        ArchiveProgressState progress,
         CancellationToken cancellationToken)
     {
         var entries = new List<BackupLogEntry>();
@@ -212,7 +300,7 @@ public sealed class BackupEngine
 
                 if (source.Type == BackupSourceType.File)
                 {
-                    if (TryAddFile(archive, source.Path, $"{sourceRoot}/{Path.GetFileName(source.Path)}", operationId, entries))
+                    if (TryAddFile(archive, source.Path, $"{sourceRoot}/{Path.GetFileName(source.Path)}", operationId, entries, progress))
                     {
                         filesAdded++;
                     }
@@ -228,7 +316,7 @@ public sealed class BackupEngine
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var relative = Path.GetRelativePath(source.Path, file).Replace('\\', '/');
-                    if (TryAddFile(archive, file, $"{sourceRoot}/{relative}", operationId, entries))
+                    if (TryAddFile(archive, file, $"{sourceRoot}/{relative}", operationId, entries, progress))
                     {
                         filesAdded++;
                     }
@@ -252,25 +340,49 @@ public sealed class BackupEngine
         }
     }
 
-    private static bool TryAddFile(ZipArchive archive, string filePath, string entryName, string operationId, List<BackupLogEntry> entries)
+    private static bool TryAddFile(
+        ZipArchive archive,
+        string filePath,
+        string entryName,
+        string operationId,
+        List<BackupLogEntry> entries,
+        ArchiveProgressState progress)
     {
+        var fileLength = 0L;
+        var copiedBytes = 0L;
         try
         {
+            fileLength = new FileInfo(filePath).Length;
             using var input = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
             entry.LastWriteTime = File.GetLastWriteTime(filePath);
             using var output = entry.Open();
-            input.CopyTo(output);
+            var buffer = new byte[128 * 1024];
+            int bytesRead;
+            while ((bytesRead = input.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                output.Write(buffer, 0, bytesRead);
+                copiedBytes += bytesRead;
+                progress.AddBytes(bytesRead, filePath);
+            }
+
+            progress.CompleteFile(filePath);
             return true;
         }
         catch (Exception ex)
         {
+            if (fileLength > copiedBytes)
+            {
+                progress.AddBytes(fileLength - copiedBytes, filePath);
+            }
+
+            progress.CompleteFile(filePath);
             entries.Add(CreateLog(BackupLogLevel.Warning, operationId, filePath, string.Empty, "FILE_SKIPPED", $"Dosya atlandi: {ex.Message}"));
             return false;
         }
     }
 
-    private static IEnumerable<string> EnumerateFilesSafe(string root, string operationId, List<BackupLogEntry> entries)
+    private static IEnumerable<string> EnumerateFilesSafe(string root, string operationId, List<BackupLogEntry>? entries)
     {
         var pending = new Stack<string>();
         pending.Push(root);
@@ -288,7 +400,7 @@ public sealed class BackupEngine
             }
             catch (Exception ex)
             {
-                entries.Add(CreateLog(BackupLogLevel.Warning, operationId, directory, string.Empty, "DIRECTORY_SKIPPED", $"Dizin okunamadi: {ex.Message}"));
+                entries?.Add(CreateLog(BackupLogLevel.Warning, operationId, directory, string.Empty, "DIRECTORY_SKIPPED", $"Dizin okunamadi: {ex.Message}"));
                 continue;
             }
 
@@ -333,6 +445,26 @@ public sealed class BackupEngine
             message = $"Hedef hazirlanamadi: {ex.Message}";
             return false;
         }
+    }
+
+    private static int CountSourceFilesSafe(IEnumerable<BackupSource> sources)
+    {
+        var count = 0;
+        foreach (var source in sources)
+        {
+            if (source.Type == BackupSourceType.File)
+            {
+                count++;
+                continue;
+            }
+
+            foreach (var _ in EnumerateFilesSafe(source.Path, string.Empty, null))
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private static long EstimateSourceBytes(IEnumerable<BackupSource> sources)
@@ -433,11 +565,117 @@ public sealed class BackupEngine
         return string.IsNullOrWhiteSpace(sanitized) ? "Yedek" : sanitized;
     }
 
+    private static void ReportProgress(
+        IProgress<BackupProgress>? progress,
+        double percent,
+        string stage,
+        string message,
+        int filesProcessed = 0,
+        int totalFiles = 0,
+        string? currentFile = null,
+        string? targetPath = null,
+        bool isIndeterminate = false)
+    {
+        progress?.Report(new BackupProgress
+        {
+            Stage = stage,
+            Message = message,
+            Percent = Math.Clamp(percent, 0, 100),
+            IsIndeterminate = isIndeterminate,
+            FilesProcessed = filesProcessed,
+            TotalFiles = totalFiles,
+            CurrentFile = currentFile,
+            TargetPath = targetPath
+        });
+    }
+
     private static string FormatBytes(long bytes)
     {
         return bytes < 1024 * 1024
             ? $"{bytes / 1024.0:N1} KB"
             : $"{bytes / 1024.0 / 1024.0:N1} MB";
+    }
+
+    private sealed class ArchiveProgressState
+    {
+        private const long ReportStepBytes = 1024 * 1024;
+        private readonly IProgress<BackupProgress>? _progress;
+        private readonly long _totalBytes;
+        private readonly long _baseBytes;
+        private readonly int _baseFiles;
+        private readonly string _targetPath;
+        private long _currentBytes;
+        private long _lastReportedBytes;
+        private int _currentFiles;
+
+        public ArchiveProgressState(
+            IProgress<BackupProgress>? progress,
+            long sourceBytes,
+            int sourceFiles,
+            int targetCount,
+            int targetIndex,
+            string targetPath)
+        {
+            _progress = progress;
+            _totalBytes = Math.Max(sourceBytes, 1) * Math.Max(targetCount, 1);
+            _baseBytes = Math.Max(sourceBytes, 1) * Math.Max(targetIndex - 1, 0);
+            _baseFiles = Math.Max(sourceFiles, 0) * Math.Max(targetIndex - 1, 0);
+            TotalFiles = Math.Max(sourceFiles, 0) * Math.Max(targetCount, 1);
+            _targetPath = targetPath;
+            Report("ZIP olusturuluyor", $"ZIP olusturuluyor ({targetIndex}/{Math.Max(targetCount, 1)}): {targetPath}", force: true);
+        }
+
+        public int FilesProcessed => Math.Min(_baseFiles + _currentFiles, TotalFiles);
+
+        public int TotalFiles { get; }
+
+        public double CurrentPercent
+        {
+            get
+            {
+                var completedBytes = Math.Min(_baseBytes + _currentBytes, _totalBytes);
+                return 15 + completedBytes / (double)_totalBytes * 60;
+            }
+        }
+
+        public void AddBytes(long bytes, string currentFile)
+        {
+            if (bytes <= 0)
+            {
+                return;
+            }
+
+            _currentBytes += bytes;
+            if (_currentBytes - _lastReportedBytes >= ReportStepBytes)
+            {
+                _lastReportedBytes = _currentBytes;
+                Report("ZIP olusturuluyor", $"Dosya ekleniyor: {Path.GetFileName(currentFile)}", currentFile);
+            }
+        }
+
+        public void CompleteFile(string currentFile)
+        {
+            _currentFiles++;
+            Report("ZIP olusturuluyor", $"Dosya eklendi: {Path.GetFileName(currentFile)}", currentFile, force: true);
+        }
+
+        private void Report(string stage, string message, string? currentFile = null, bool force = false)
+        {
+            if (!force && _progress is null)
+            {
+                return;
+            }
+
+            ReportProgress(
+                _progress,
+                CurrentPercent,
+                stage,
+                message,
+                FilesProcessed,
+                TotalFiles,
+                currentFile,
+                _targetPath);
+        }
     }
 
     private sealed record ArchiveCreateResult(

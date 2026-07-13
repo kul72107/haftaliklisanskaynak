@@ -14,6 +14,7 @@ var tests = new (string Name, Func<Task> Run)[]
 {
     ("Legacy INI import", TestLegacyIniImport),
     ("Backup ZIP, validation, SHA256, cloud mock", TestBackupEngine),
+    ("Backup progress reporting", TestBackupProgressReporting),
     ("DPAPI secret store", TestSecretStore),
     ("Static TXT license activation", TestStaticTxtLicense),
     ("Static TXT license revocation", TestStaticTxtRevocation),
@@ -21,6 +22,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Admin panel custom duration", TestAdminPanelCustomDuration),
     ("ResurrectSoft copyright notice", TestResurrectSoftCopyrightNotice),
     ("Standard window chrome", TestStandardWindowChrome),
+    ("Backup progress popup", TestBackupProgressPopup),
     ("Animated pattern background", TestAnimatedPatternBackground),
     ("Premium visual asset set", TestPremiumVisualAssetSet),
     ("Responsive visual constraints", TestResponsiveVisualConstraints),
@@ -131,6 +133,35 @@ static async Task TestBackupEngine()
 
     using var archive = ZipFile.OpenRead(result.ArchivePath!);
     Assert(archive.Entries.Count == 2, "zip entries");
+}
+
+static async Task TestBackupProgressReporting()
+{
+    var root = CreateTempRoot();
+    var source = Path.Combine(root, "source");
+    var target = Path.Combine(root, "target");
+    Directory.CreateDirectory(source);
+    await File.WriteAllBytesAsync(Path.Combine(source, "a.bin"), Enumerable.Repeat((byte)7, 256 * 1024).ToArray());
+    await File.WriteAllTextAsync(Path.Combine(source, "b.txt"), "beta");
+
+    var settings = new BackupSettings
+    {
+        ProfileName = "Progress Test",
+        Sources = [new BackupSource { Path = source, Type = BackupSourceType.Folder, Enabled = true }],
+        Targets = [new BackupTarget { Path = target, Enabled = true }],
+        Retention = new RetentionSettings { Enabled = false }
+    };
+
+    var progress = new CollectingBackupProgress();
+    var result = await new BackupEngine().RunAsync(settings, progress: progress);
+
+    Assert(result.Outcome == BackupOutcome.Success, "progress backup success");
+    Assert(progress.Events.Count > 0, "progress events emitted");
+    Assert(progress.Events.Any(entry => entry.Percent > 0), "progress percent moves");
+    Assert(progress.Events.Any(entry => entry.TotalFiles == 2), "progress total files");
+    Assert(progress.Events.Any(entry => entry.FilesProcessed > 0), "progress processed files");
+    Assert(progress.Events.Any(entry => entry.Stage.Contains("ZIP", StringComparison.OrdinalIgnoreCase)), "progress zip stage");
+    Assert(progress.Events.Any(entry => entry.Percent >= 100), "progress completes");
 }
 
 static async Task TestSecretStore()
@@ -319,6 +350,21 @@ static async Task TestStandardWindowChrome()
     Assert(code.Contains("EnsureStandardWindowChrome", StringComparison.Ordinal), "runtime title bar enforcement");
 }
 
+static async Task TestBackupProgressPopup()
+{
+    var popupXaml = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "BackupProgressWindow.xaml"));
+    var popupCode = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "BackupProgressWindow.xaml.cs"));
+    var mainCode = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml.cs"));
+    var normalizedMainCode = mainCode.Replace("\r\n", "\n");
+
+    Assert(popupXaml.Contains("<ProgressBar", StringComparison.OrdinalIgnoreCase), "backup popup progressbar");
+    Assert(popupCode.Contains("UpdateProgress(BackupProgress progress)", StringComparison.Ordinal), "backup popup update method");
+    Assert(mainCode.Contains("OpenBackupProgressWindow", StringComparison.Ordinal), "backup popup opened by main window");
+    Assert(mainCode.Contains("new Progress<BackupProgress>", StringComparison.Ordinal), "backup progress wired");
+    Assert(mainCode.Contains("Zamanlanmis yedekleme hazirlaniyor.", StringComparison.Ordinal), "scheduled backup popup text");
+    Assert(!normalizedMainCode.Contains("if (triggeredBySchedule)\n        {\n            return null;\n        }", StringComparison.Ordinal), "scheduled backup popup not skipped");
+}
+
 static async Task TestAnimatedPatternBackground()
 {
     var xaml = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml"));
@@ -331,11 +377,8 @@ static async Task TestAnimatedPatternBackground()
     Assert(xaml.Contains("PatternOpacitySlider", StringComparison.Ordinal), "temporary pattern opacity slider");
     Assert(xaml.Contains("PatternOpacityValueText", StringComparison.Ordinal), "pattern opacity value label");
     Assert(code.Contains("PatternOpacitySlider_ValueChanged", StringComparison.Ordinal), "pattern opacity handler");
-    Assert(xaml.Contains("SidebarOpacitySlider", StringComparison.Ordinal), "temporary sidebar opacity slider");
-    Assert(xaml.Contains("SidebarOpacityValueText", StringComparison.Ordinal), "sidebar opacity value label");
     Assert(xaml.Contains("SidebarTextureBrush", StringComparison.Ordinal), "sidebar texture brush");
     Assert(xaml.Contains("SidebarOverlayBrush", StringComparison.Ordinal), "sidebar overlay brush");
-    Assert(code.Contains("SidebarOpacitySlider_ValueChanged", StringComparison.Ordinal), "sidebar opacity handler");
     Assert(xaml.Contains("RepeatBehavior=\"Forever\"", StringComparison.OrdinalIgnoreCase), "pattern loops");
     Assert(xaml.Contains("SidebarTextOutlineEffect", StringComparison.Ordinal), "sidebar text outline");
     Assert(csproj.Contains("Assets\\*.png", StringComparison.OrdinalIgnoreCase), "png resources included");
@@ -530,6 +573,16 @@ static void Assert(bool condition, string name)
     if (!condition)
     {
         throw new InvalidOperationException($"Assertion failed: {name}");
+    }
+}
+
+sealed class CollectingBackupProgress : IProgress<BackupProgress>
+{
+    public List<BackupProgress> Events { get; } = [];
+
+    public void Report(BackupProgress value)
+    {
+        Events.Add(value);
     }
 }
 

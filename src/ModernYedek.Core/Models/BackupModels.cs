@@ -165,6 +165,18 @@ public sealed class BackupRunResult
     public List<BackupLogEntry> Entries { get; set; } = [];
 }
 
+public sealed class BackupProgress
+{
+    public string Stage { get; init; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
+    public double Percent { get; init; }
+    public bool IsIndeterminate { get; init; }
+    public int FilesProcessed { get; init; }
+    public int TotalFiles { get; init; }
+    public string? CurrentFile { get; init; }
+    public string? TargetPath { get; init; }
+}
+
 public sealed class CloudUploadRequest
 {
     public required string BucketName { get; init; }
