@@ -251,6 +251,7 @@
             <option value="30">30 gun</option>
             <option value="90">90 gun</option>
             <option value="365">365 gun</option>
+            <option value="expires">Bitis tarihi</option>
             <option value="custom">Custom</option>
           </select>
         </label>
@@ -258,6 +259,11 @@
         <label id="customDurationWrap" style="display:none">
           Custom gun
           <input id="customDurationDays" type="number" min="1" step="1" value="1" placeholder="Istedigin gun sayisi">
+        </label>
+
+        <label id="expiryDateWrap" style="display:none">
+          Bitis tarihi
+          <input id="expiryDate" type="date">
         </label>
 
         <label>
@@ -442,22 +448,40 @@
       const hash = await sha256Hex(key);
       const emailHash = await sha256Hex(email);
       const durationMode = el("durationDays").value;
-      const durationDays = durationMode === "custom"
-        ? Math.max(1, Number.parseInt(el("customDurationDays").value || "1", 10))
-        : Math.max(1, Number.parseInt(durationMode || "7", 10));
-      if (!Number.isFinite(durationDays) || durationDays < 1) {
-        setStatus("Sure en az 1 gun olmali.", "warn");
-        return;
+      let durationDays = null;
+      let expiresAt = "";
+      let licenseDurationValue = "";
+      if (durationMode === "expires") {
+        const expiryDate = el("expiryDate").value;
+        if (!expiryDate) {
+          setStatus("Bitis tarihi secilmeli.", "warn");
+          return;
+        }
+
+        expiresAt = new Date(expiryDate + "T23:59:59Z").toISOString();
+        licenseDurationValue = expiresAt;
+      } else {
+        durationDays = durationMode === "custom"
+          ? Math.max(1, Number.parseInt(el("customDurationDays").value || "1", 10))
+          : Math.max(1, Number.parseInt(durationMode || "7", 10));
+        if (!Number.isFinite(durationDays) || durationDays < 1) {
+          setStatus("Sure en az 1 gun olmali.", "warn");
+          return;
+        }
+
+        licenseDurationValue = String(durationDays);
       }
 
       const status = el("licenseStatus").value;
       const note = cleanNote(el("licenseNote").value);
-      const line = [hash, emailHash, durationDays, status, note].join("|");
+      const line = [hash, emailHash, licenseDurationValue, status, note].join("|");
       const json = {
         hash,
         emailHash,
         email,
+        durationMode,
         durationDays,
+        expiresAt,
         status,
         note
       };
@@ -488,7 +512,9 @@
     });
 
     el("durationDays").addEventListener("change", () => {
-      el("customDurationWrap").style.display = el("durationDays").value === "custom" ? "block" : "none";
+      const durationMode = el("durationDays").value;
+      el("customDurationWrap").style.display = durationMode === "custom" ? "block" : "none";
+      el("expiryDateWrap").style.display = durationMode === "expires" ? "block" : "none";
     });
 
     el("copyKey").addEventListener("click", () => copyText(el("licenseKey").value, "Key"));
@@ -500,6 +526,8 @@
       el("durationDays").value = "7";
       el("customDurationDays").value = "1";
       el("customDurationWrap").style.display = "none";
+      el("expiryDate").value = "";
+      el("expiryDateWrap").style.display = "none";
       el("hashOutput").value = "";
       el("emailHashOutput").value = "";
       el("lineOutput").value = "";

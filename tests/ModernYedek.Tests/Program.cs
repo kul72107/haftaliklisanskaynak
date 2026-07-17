@@ -19,6 +19,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Static TXT license activation", TestStaticTxtLicense),
     ("Static TXT license revocation", TestStaticTxtRevocation),
     ("Static TXT license validation keeps expiry", TestStaticTxtLicenseValidationKeepsExpiry),
+    ("Static TXT email restore", TestStaticTxtEmailRestore),
     ("Admin panel custom duration", TestAdminPanelCustomDuration),
     ("ResurrectSoft copyright notice", TestResurrectSoftCopyrightNotice),
     ("Standard window chrome", TestStandardWindowChrome),
@@ -357,15 +358,53 @@ static async Task TestStaticTxtLicenseValidationKeepsExpiry()
     Assert(missing.Message.Contains("bulunamadi", StringComparison.OrdinalIgnoreCase), "removed license message");
 }
 
+static async Task TestStaticTxtEmailRestore()
+{
+    var key = "MY-EMAIL-RESTORE";
+    var email = "restore@example.com";
+    var hash = StaticLicenseClient.HashLicenseKey(key);
+    var emailHash = StaticLicenseClient.HashEmail(email);
+    var licenseUrl = "https://license.test/licenses.txt";
+    var revokedUrl = "https://license.test/revoked.txt";
+    var expiresAt = DateTimeOffset.UtcNow.AddDays(5);
+    using var http = new HttpClient(new FakeLicenseHttpHandler(new Dictionary<string, string>
+    {
+        [licenseUrl] = $"{hash}|{emailHash}|{expiresAt:O}|active|email-restore",
+        [revokedUrl] = "# none"
+    }));
+
+    var client = new StaticLicenseClient(http);
+    var restored = await client.ValidateByEmailAsync(email, new LicenseSettings
+    {
+        LicenseListUrl = licenseUrl,
+        RevokedListUrl = revokedUrl
+    }, "machine-email", existingResult: null);
+    var wrongEmail = await client.ValidateByEmailAsync("wrong@example.com", new LicenseSettings
+    {
+        LicenseListUrl = licenseUrl,
+        RevokedListUrl = revokedUrl
+    }, "machine-email", existingResult: null);
+
+    Assert(restored.IsValid, "email restore valid");
+    Assert(restored.LicenseId == hash, "email restore license hash");
+    Assert(restored.CustomerEmail == email, "email restore customer email");
+    Assert(restored.PaidUntil is not null && restored.PaidUntil.Value > DateTimeOffset.UtcNow.AddDays(4), "email restore expiry from txt");
+    Assert(restored.Message.Contains("Kalan sure", StringComparison.OrdinalIgnoreCase), "email restore remaining days message");
+    Assert(!wrongEmail.IsValid, "email restore rejects unknown email");
+}
+
 static async Task TestAdminPanelCustomDuration()
 {
     var html = await File.ReadAllTextAsync(Path.Combine("tools", "license-admin", "index.html"));
     Assert(html.Contains("<option value=\"custom\">Custom</option>", StringComparison.OrdinalIgnoreCase), "custom duration option");
+    Assert(html.Contains("<option value=\"expires\">Bitis tarihi</option>", StringComparison.OrdinalIgnoreCase), "expiry duration option");
     Assert(html.Contains("customDurationDays", StringComparison.OrdinalIgnoreCase), "custom duration input");
+    Assert(html.Contains("expiryDateWrap", StringComparison.OrdinalIgnoreCase), "expiry date input");
     Assert(html.Contains("durationMode === \"custom\"", StringComparison.OrdinalIgnoreCase), "custom duration logic");
+    Assert(html.Contains("durationMode === \"expires\"", StringComparison.OrdinalIgnoreCase), "expiry date logic");
     Assert(html.Contains("licenseEmail", StringComparison.OrdinalIgnoreCase), "license email input");
     Assert(html.Contains("emailHash", StringComparison.OrdinalIgnoreCase), "license email hash output");
-    Assert(html.Contains("[hash, emailHash, durationDays, status, note].join(\"|\")", StringComparison.Ordinal), "license txt email format");
+    Assert(html.Contains("[hash, emailHash, licenseDurationValue, status, note].join(\"|\")", StringComparison.Ordinal), "license txt email format");
 }
 
 static async Task TestResurrectSoftCopyrightNotice()
@@ -417,6 +456,8 @@ static async Task TestLegacyAppOptionsSurfaced()
     Assert(xaml.Contains("ArchiveFormatBox", StringComparison.Ordinal), "archive format ui");
     Assert(xaml.Contains("<ComboBoxItem Content=\"RAR\"", StringComparison.Ordinal), "rar option ui");
     Assert(xaml.IndexOf("LicensePanel", StringComparison.Ordinal) < xaml.IndexOf("LicenseEmailBox", StringComparison.Ordinal), "license email in license panel");
+    Assert(xaml.Contains("E-posta ile Dogrula", StringComparison.Ordinal), "email restore button ui");
+    Assert(mainCode.Contains("ValidateLicenseByEmail_Click", StringComparison.Ordinal), "email restore handler");
     Assert(mainCode.Contains("ApplyStartupRegistration", StringComparison.Ordinal), "startup registry code");
     Assert(mainCode.Contains("BackupWarningWindow", StringComparison.Ordinal), "warning popup code");
     Assert(mainCode.Contains("TrySendBackupReportEmailAsync", StringComparison.Ordinal), "mail report code");

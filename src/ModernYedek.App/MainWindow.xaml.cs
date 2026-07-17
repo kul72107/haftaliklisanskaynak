@@ -961,6 +961,55 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void ValidateLicenseByEmail_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            CollectSettingsFromUi();
+            var email = LicenseEmailBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                ShowWarning("E-posta gerekli. Lisans alirken verdiginiz e-postayi girin.");
+                return;
+            }
+
+            _licenseCancellationTokenSource?.Cancel();
+            _licenseCancellationTokenSource?.Dispose();
+            _licenseCancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = _licenseCancellationTokenSource.Token;
+
+            LicenseStateText.Text = "E-posta dogrulaniyor...";
+            var result = await ValidateLicenseByEmailOnlineAsync(email, cancellationToken);
+            await SaveLicenseResultAsync(string.Empty, result);
+            await _settingsService.SaveAsync(_settings);
+            if (!result.IsValid && ShouldClearLocalLicenseResult(result))
+            {
+                ClearLocalLicenseUi(result.Message);
+            }
+            else
+            {
+                UpdateLicenseUi(result);
+            }
+
+            StatusBarText.Text = result.Message;
+            if (result.IsValid)
+            {
+                LicenseKeyBox.Clear();
+                ShowSuccess($"E-posta dogrulandi.{Environment.NewLine}{result.Message}");
+            }
+            else
+            {
+                ShowWarning($"E-posta dogrulanamadi.{Environment.NewLine}{result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusBarText.Text = "E-posta dogrulama basarisiz.";
+            LicenseDetailText.Text = ex.Message;
+            ShowError(ex.Message, "E-posta dogrulama basarisiz");
+        }
+    }
+
     private async void ClearLicenseCache_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -1445,17 +1494,20 @@ public partial class MainWindow : Window
         var key = !string.IsNullOrWhiteSpace(LicenseKeyBox.Text)
             ? LicenseKeyBox.Text.Trim()
             : cache?.LicenseKey ?? string.Empty;
+        var email = GetCurrentLicenseEmail(cache);
 
-        if (string.IsNullOrWhiteSpace(key))
+        if (string.IsNullOrWhiteSpace(key) && string.IsNullOrWhiteSpace(email))
         {
             LicenseStateText.Text = "Lisans gerekli";
-            LicenseDetailText.Text = "Lisans anahtari girilmedi.";
+            LicenseDetailText.Text = "Lisans anahtari veya lisans e-postasi girilmedi.";
             return false;
         }
 
         try
         {
-            var result = await ValidateLicenseOnlineAsync(key);
+            var result = string.IsNullOrWhiteSpace(key)
+                ? await ValidateLicenseByEmailOnlineAsync(email)
+                : await ValidateLicenseOnlineAsync(key);
             await SaveLicenseResultAsync(key, result);
             UpdateLicenseUi(result);
             return result.IsValid;
@@ -1492,6 +1544,22 @@ public partial class MainWindow : Window
         return await new StaticLicenseClient(_httpClient).ValidateExistingAsync(
             licenseKey,
             email,
+            _settings.License,
+            MachineIdentity.Current(),
+            existingResult,
+            cancellationToken);
+    }
+
+    private async Task<LicenseValidationResult> ValidateLicenseByEmailOnlineAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var cache = await _licenseCacheService.LoadAsync(cancellationToken);
+        var normalizedEmail = StaticLicenseClient.NormalizeEmail(email);
+        var existingResult = IsCachedLicenseForEmail(cache, normalizedEmail)
+            ? cache!.LastResult
+            : null;
+
+        return await new StaticLicenseClient(_httpClient).ValidateByEmailAsync(
+            normalizedEmail,
             _settings.License,
             MachineIdentity.Current(),
             existingResult,
@@ -1644,6 +1712,12 @@ public partial class MainWindow : Window
             && string.Equals(StaticLicenseClient.NormalizeEmail(cache.Email), StaticLicenseClient.NormalizeEmail(email), StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsCachedLicenseForEmail(LicenseCache? cache, string email)
+    {
+        return cache is not null
+            && string.Equals(StaticLicenseClient.NormalizeEmail(cache.Email), StaticLicenseClient.NormalizeEmail(email), StringComparison.OrdinalIgnoreCase);
+    }
+
     private string GetCurrentLicenseEmail(LicenseCache? cache = null)
     {
         var email = StaticLicenseClient.NormalizeEmail(_settings.License.Email);
@@ -1679,13 +1753,21 @@ public partial class MainWindow : Window
 
         try
         {
-            var result = await new StaticLicenseClient(_httpClient).ValidateExistingAsync(
-                cache.LicenseKey,
-                GetCurrentLicenseEmail(cache),
-                _settings.License,
-                MachineIdentity.Current(),
-                cache.LastResult,
-                cancellationToken);
+            var client = new StaticLicenseClient(_httpClient);
+            var result = string.IsNullOrWhiteSpace(cache.LicenseKey)
+                ? await client.ValidateByEmailAsync(
+                    GetCurrentLicenseEmail(cache),
+                    _settings.License,
+                    MachineIdentity.Current(),
+                    cache.LastResult,
+                    cancellationToken)
+                : await client.ValidateExistingAsync(
+                    cache.LicenseKey,
+                    GetCurrentLicenseEmail(cache),
+                    _settings.License,
+                    MachineIdentity.Current(),
+                    cache.LastResult,
+                    cancellationToken);
 
             cache.LastRevocationCheckAt = DateTimeOffset.UtcNow;
             cache.LicenseListUrl = _settings.License.LicenseListUrl;
@@ -1768,8 +1850,7 @@ public partial class MainWindow : Window
 
         var lastRevocationCheckAt = existing?.LastRevocationCheckAt;
         if (result.IsValid
-            && string.Equals(result.Provider, "github-pages-txt", StringComparison.OrdinalIgnoreCase)
-            && result.Message.Contains("aktiflestirildi", StringComparison.OrdinalIgnoreCase))
+            && string.Equals(result.Provider, "github-pages-txt", StringComparison.OrdinalIgnoreCase))
         {
             lastRevocationCheckAt = DateTimeOffset.UtcNow;
         }

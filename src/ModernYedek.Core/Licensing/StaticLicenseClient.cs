@@ -38,27 +38,24 @@ public sealed class StaticLicenseClient
         }
 
         var now = DateTimeOffset.UtcNow;
-        var durationDays = Math.Max(1, record.Match!.DurationDays);
-        var paidUntil = now.AddDays(durationDays);
-
-        return new LicenseValidationResult
+        var paidUntil = ResolvePaidUntil(record.Match!, now, existingResult: null, preserveExisting: false);
+        if (paidUntil <= now)
         {
-            IsValid = true,
-            State = LicenseState.Active,
-            Message = $"Lisans aktiflestirildi. Sure: {durationDays} gun.",
-            Provider = "github-pages-txt",
-            LicenseId = hash,
-            InstanceId = BuildInstanceId(hash, machineId),
-            CustomerEmail = normalizedEmail,
-            ProductId = "modern-yedek",
-            VariantId = durationDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            Plan = $"manual_{durationDays}d",
-            Note = record.Match.Note,
-            PaidUntil = paidUntil,
-            OfflineUntil = paidUntil,
-            ActivationLimit = 1,
-            ActivationCount = 1
-        };
+            return BuildExpiredResult(
+                record.Match!,
+                normalizedEmail,
+                machineId,
+                existingResult: null,
+                "Lisans suresi dolmus. Yeni key gerekir.");
+        }
+
+        return BuildActiveResult(
+            record.Match!,
+            normalizedEmail,
+            machineId,
+            existingResult: null,
+            $"Lisans aktiflestirildi. Kalan sure: {RemainingDays(paidUntil, now)} gun.",
+            paidUntil);
     }
 
     public async Task<LicenseValidationResult> ValidateExistingAsync(
@@ -86,48 +83,70 @@ public sealed class StaticLicenseClient
         }
 
         var now = DateTimeOffset.UtcNow;
-        var durationDays = Math.Max(1, record.Match!.DurationDays);
-        var paidUntil = existingResult?.PaidUntil ?? existingResult?.OfflineUntil ?? now.AddDays(durationDays);
+        var paidUntil = ResolvePaidUntil(record.Match!, now, existingResult, preserveExisting: true);
         if (paidUntil <= now)
         {
-            return new LicenseValidationResult
-            {
-                IsValid = false,
-                State = LicenseState.Expired,
-                Message = "Lisans suresi dolmus. Ayni key yeniden sure baslatamaz; yeni key gerekir.",
-                Provider = "github-pages-txt",
-                LicenseId = hash,
-                InstanceId = existingResult?.InstanceId ?? BuildInstanceId(hash, machineId),
-                CustomerEmail = normalizedEmail,
-                ProductId = "modern-yedek",
-                VariantId = durationDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                Plan = $"manual_{durationDays}d",
-                Note = existingResult?.Note ?? record.Match.Note,
-                PaidUntil = paidUntil,
-                OfflineUntil = paidUntil,
-                ActivationLimit = 1,
-                ActivationCount = 1
-            };
+            return BuildExpiredResult(
+                record.Match!,
+                normalizedEmail,
+                machineId,
+                existingResult,
+                "Lisans suresi dolmus. Ayni key yeniden sure baslatamaz; yeni key gerekir.");
         }
 
-        return new LicenseValidationResult
+        return BuildActiveResult(
+            record.Match!,
+            normalizedEmail,
+            machineId,
+            existingResult,
+            "Lisans dogrulandi. Sure ilk aktivasyondaki bitis tarihine gore korunuyor.",
+            paidUntil);
+    }
+
+    public async Task<LicenseValidationResult> ValidateByEmailAsync(
+        string email,
+        LicenseSettings settings,
+        string machineId,
+        LicenseValidationResult? existingResult,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = NormalizeEmail(email);
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
         {
-            IsValid = true,
-            State = LicenseState.Active,
-            Message = "Lisans dogrulandi. Sure ilk aktivasyondaki bitis tarihine gore korunuyor.",
-            Provider = "github-pages-txt",
-            LicenseId = hash,
-            InstanceId = existingResult?.InstanceId ?? BuildInstanceId(hash, machineId),
-            CustomerEmail = normalizedEmail,
-            ProductId = "modern-yedek",
-            VariantId = durationDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            Plan = $"manual_{durationDays}d",
-            Note = record.Match.Note,
-            PaidUntil = paidUntil,
-            OfflineUntil = paidUntil,
-            ActivationLimit = 1,
-            ActivationCount = 1
-        };
+            return Invalid("E-posta dogrulamasi icin e-posta gerekli.", string.Empty);
+        }
+
+        var emailHash = HashEmail(normalizedEmail);
+        var record = await FindUsableLicenseRecordByEmailAsync(
+            normalizedEmail,
+            emailHash,
+            existingResult?.LicenseId,
+            settings,
+            cancellationToken);
+        if (!record.IsValid)
+        {
+            return record.Result;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var paidUntil = ResolvePaidUntil(record.Match!, now, existingResult, preserveExisting: true);
+        if (paidUntil <= now)
+        {
+            return BuildExpiredResult(
+                record.Match!,
+                normalizedEmail,
+                machineId,
+                existingResult,
+                "Bu e-posta uzerindeki lisans suresi dolmus. Yeni lisans gerekir.");
+        }
+
+        return BuildActiveResult(
+            record.Match!,
+            normalizedEmail,
+            machineId,
+            existingResult,
+            $"E-posta dogrulandi. Kalan sure: {RemainingDays(paidUntil, now)} gun.",
+            paidUntil);
     }
 
     public static string HashLicenseKey(string licenseKey)
@@ -224,9 +243,22 @@ public sealed class StaticLicenseClient
             var statusIndex = isEmailBound ? 3 : 2;
             var noteIndex = isEmailBound ? 4 : 3;
 
-            if (!int.TryParse(parts[durationIndex], out var durationDays))
+            var durationValue = parts[durationIndex].Trim();
+            DateTimeOffset? expiresAt = null;
+            if (!int.TryParse(durationValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var durationDays))
             {
-                durationDays = 7;
+                if (DateTimeOffset.TryParse(
+                    durationValue,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out var parsedExpiresAt))
+                {
+                    expiresAt = parsedExpiresAt;
+                }
+                else
+                {
+                    durationDays = 7;
+                }
             }
 
             records.Add(new StaticLicenseRecord
@@ -234,6 +266,7 @@ public sealed class StaticLicenseClient
                 Hash = parts[0].Trim().ToUpperInvariant(),
                 EmailIdentity = emailIdentity,
                 DurationDays = durationDays,
+                ExpiresAt = expiresAt,
                 Status = parts.Length > statusIndex ? parts[statusIndex].Trim() : string.Empty,
                 Note = parts.Length > noteIndex ? parts[noteIndex].Trim() : string.Empty
             });
@@ -298,6 +331,55 @@ public sealed class StaticLicenseClient
         return StaticLicenseRecordCheck.Valid(match);
     }
 
+    private async Task<StaticLicenseRecordCheck> FindUsableLicenseRecordByEmailAsync(
+        string normalizedEmail,
+        string emailHash,
+        string? preferredLicenseHash,
+        LicenseSettings settings,
+        CancellationToken cancellationToken)
+    {
+        var licensesResult = await TryLoadLicensesAsync(settings.LicenseListUrl, cancellationToken);
+        if (!licensesResult.Success)
+        {
+            return StaticLicenseRecordCheck.Invalid(Invalid($"Lisans listesi kontrol edilemedi: {licensesResult.Message}", string.Empty));
+        }
+
+        var preferredHash = preferredLicenseHash?.Trim().ToUpperInvariant() ?? string.Empty;
+        var emailMatches = licensesResult.Records
+            .Where(license => license.MatchesEmail(normalizedEmail, emailHash))
+            .ToList();
+        if (emailMatches.Count == 0)
+        {
+            return StaticLicenseRecordCheck.Invalid(Invalid("Bu e-posta icin lisans kaydi bulunamadi.", string.Empty));
+        }
+
+        var activeMatches = emailMatches
+            .Where(license => string.Equals(license.Status, "active", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(license => string.Equals(license.Hash, preferredHash, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(license => license.SortExpiry(DateTimeOffset.UtcNow))
+            .ToList();
+        if (activeMatches.Count == 0)
+        {
+            return StaticLicenseRecordCheck.Invalid(Invalid("Bu e-posta icin aktif lisans kaydi yok.", emailMatches[0].Hash));
+        }
+
+        foreach (var match in activeMatches)
+        {
+            var revocation = await CheckRevocationAsync(match.Hash, settings.RevokedListUrl, cancellationToken);
+            if (!revocation.Success)
+            {
+                return StaticLicenseRecordCheck.Invalid(Invalid($"Iptal listesi kontrol edilemedi: {revocation.Message}", match.Hash));
+            }
+
+            if (!revocation.IsRevoked)
+            {
+                return StaticLicenseRecordCheck.Valid(match);
+            }
+        }
+
+        return StaticLicenseRecordCheck.Invalid(Invalid("Bu e-posta icin bulunan lisans iptal edilmis.", activeMatches[0].Hash));
+    }
+
     private async Task<LicenseListLoadResult> TryLoadLicensesAsync(string url, CancellationToken cancellationToken)
     {
         try
@@ -309,6 +391,104 @@ public sealed class StaticLicenseClient
         {
             return new LicenseListLoadResult { Success = false, Message = ex.Message };
         }
+    }
+
+    private static LicenseValidationResult BuildActiveResult(
+        StaticLicenseRecord record,
+        string normalizedEmail,
+        string machineId,
+        LicenseValidationResult? existingResult,
+        string message,
+        DateTimeOffset paidUntil)
+    {
+        return new LicenseValidationResult
+        {
+            IsValid = true,
+            State = LicenseState.Active,
+            Message = message,
+            Provider = "github-pages-txt",
+            LicenseId = record.Hash,
+            InstanceId = existingResult?.InstanceId ?? BuildInstanceId(record.Hash, machineId),
+            CustomerEmail = normalizedEmail,
+            ProductId = "modern-yedek",
+            VariantId = GetVariantId(record),
+            Plan = GetPlan(record),
+            Note = record.Note,
+            PaidUntil = paidUntil,
+            OfflineUntil = paidUntil,
+            ActivationLimit = 1,
+            ActivationCount = 1
+        };
+    }
+
+    private static LicenseValidationResult BuildExpiredResult(
+        StaticLicenseRecord record,
+        string normalizedEmail,
+        string machineId,
+        LicenseValidationResult? existingResult,
+        string message)
+    {
+        var paidUntil = ResolvePaidUntil(record, DateTimeOffset.UtcNow, existingResult, preserveExisting: true);
+        return new LicenseValidationResult
+        {
+            IsValid = false,
+            State = LicenseState.Expired,
+            Message = message,
+            Provider = "github-pages-txt",
+            LicenseId = record.Hash,
+            InstanceId = existingResult?.InstanceId ?? BuildInstanceId(record.Hash, machineId),
+            CustomerEmail = normalizedEmail,
+            ProductId = "modern-yedek",
+            VariantId = GetVariantId(record),
+            Plan = GetPlan(record),
+            Note = existingResult?.Note ?? record.Note,
+            PaidUntil = paidUntil,
+            OfflineUntil = paidUntil,
+            ActivationLimit = 1,
+            ActivationCount = 1
+        };
+    }
+
+    private static DateTimeOffset ResolvePaidUntil(
+        StaticLicenseRecord record,
+        DateTimeOffset now,
+        LicenseValidationResult? existingResult,
+        bool preserveExisting)
+    {
+        if (record.ExpiresAt is not null)
+        {
+            return record.ExpiresAt.Value;
+        }
+
+        if (preserveExisting)
+        {
+            var existingPaidUntil = existingResult?.PaidUntil ?? existingResult?.OfflineUntil;
+            if (existingPaidUntil is not null)
+            {
+                return existingPaidUntil.Value;
+            }
+        }
+
+        return now.AddDays(Math.Max(1, record.DurationDays));
+    }
+
+    private static int RemainingDays(DateTimeOffset paidUntil, DateTimeOffset now)
+    {
+        return Math.Max(0, (int)Math.Ceiling((paidUntil - now).TotalDays));
+    }
+
+    private static string GetVariantId(StaticLicenseRecord record)
+    {
+        return record.ExpiresAt is not null
+            ? record.ExpiresAt.Value.UtcDateTime.ToString("yyyyMMdd", CultureInfo.InvariantCulture)
+            : Math.Max(1, record.DurationDays).ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static string GetPlan(StaticLicenseRecord record)
+    {
+        return record.ExpiresAt is not null
+            ? "manual_until"
+            : $"manual_{Math.Max(1, record.DurationDays)}d";
     }
 
     private static LicenseValidationResult Invalid(string message, string hash)
@@ -370,6 +550,7 @@ public sealed class StaticLicenseClient
         public string Hash { get; init; } = string.Empty;
         public string EmailIdentity { get; init; } = string.Empty;
         public int DurationDays { get; init; }
+        public DateTimeOffset? ExpiresAt { get; init; }
         public string Status { get; init; } = string.Empty;
         public string Note { get; init; } = string.Empty;
 
@@ -382,6 +563,11 @@ public sealed class StaticLicenseClient
 
             return string.Equals(EmailIdentity.Trim(), emailHash, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(NormalizeEmail(EmailIdentity), normalizedEmail, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public DateTimeOffset SortExpiry(DateTimeOffset now)
+        {
+            return ExpiresAt ?? now.AddDays(Math.Max(1, DurationDays));
         }
     }
 

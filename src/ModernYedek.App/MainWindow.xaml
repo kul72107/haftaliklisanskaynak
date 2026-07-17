@@ -577,6 +577,7 @@
                                     <Button Content="Dogrula" Style="{StaticResource SecondaryButtonStyle}" Click="ValidateLicense_Click" ToolTip="Mevcut lisansın hâlâ geçerli, süresi dolmamış ve iptal edilmemiş olduğunu kontrol eder."/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Button Content="E-posta ile Dogrula" Style="{StaticResource SecondaryButtonStyle}" Click="ValidateLicenseByEmail_Click" ToolTip="Key kaybolduysa veya yazilim aktif degilse lisans e-postasini internet listesinden tekrar kontrol eder."/>
                                     <Button Content="Yerel lisans onbellegini temizle" Style="{StaticResource SecondaryButtonStyle}" Click="ClearLicenseCache_Click" ToolTip="Bu bilgisayarda kayıtlı olan lisans cache dosyasını siler. Süresi dolmuş veya takılan lisanslarda yeni key denemek için kullanılır."/>
                                 </StackPanel>
                                 <TextBlock x:Name="LicenseStateText" Text="Lisans durumu bekleniyor." Foreground="{StaticResource Ink}" FontWeight="SemiBold" Margin="0,14,0,0" ToolTip="Lisansın aktif, geçersiz, süresi dolmuş veya iptal edilmiş olup olmadığını gösterir."/>
