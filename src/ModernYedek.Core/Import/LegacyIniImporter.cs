@@ -18,6 +18,7 @@ public sealed class LegacyIniImporter
         {
             ProfileName = "Datasoft Yedek",
             ZipEnabled = ReadBool(ini, "DURUM", "ZIPMI", defaultValue: true),
+            ArchiveFormat = BackupArchiveFormat.Zip,
             Sources = ReadSources(ini),
             Targets = ReadTargets(ini),
             Schedule = ReadSchedule(ini),

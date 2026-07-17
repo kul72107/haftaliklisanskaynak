@@ -2075,7 +2075,7 @@ public partial class MainWindow : Window
     {
         NormalizeAppBehaviorSettings();
         ProfileNameBox.Text = _settings.ProfileName;
-        ZipEnabledCheck.IsChecked = _settings.ZipEnabled;
+        ArchiveFormatBox.SelectedIndex = _settings.ArchiveFormat == BackupArchiveFormat.Rar ? 1 : 0;
         MinimizeToTrayOnCloseCheck.IsChecked = _settings.AppBehavior.MinimizeToTrayOnClose;
         StartWithWindowsCheck.IsChecked = _settings.AppBehavior.StartWithWindows;
         AutoCloseResultPopupCheck.IsChecked = _settings.Warning.AutoCloseResultPopup;
@@ -2131,7 +2131,8 @@ public partial class MainWindow : Window
     {
         NormalizeAppBehaviorSettings();
         _settings.ProfileName = string.IsNullOrWhiteSpace(ProfileNameBox.Text) ? "Datasoft Yedek" : ProfileNameBox.Text.Trim();
-        _settings.ZipEnabled = ZipEnabledCheck.IsChecked == true;
+        _settings.ArchiveFormat = ArchiveFormatBox.SelectedIndex == 1 ? BackupArchiveFormat.Rar : BackupArchiveFormat.Zip;
+        _settings.ZipEnabled = _settings.ArchiveFormat == BackupArchiveFormat.Zip;
         _settings.AppBehavior.MinimizeToTrayOnClose = MinimizeToTrayOnCloseCheck.IsChecked == true;
         _settings.AppBehavior.StartWithWindows = StartWithWindowsCheck.IsChecked == true;
         _settings.License.Email = StaticLicenseClient.NormalizeEmail(LicenseEmailBox.Text);
@@ -2466,6 +2467,12 @@ public partial class MainWindow : Window
         _settings.Warning.MinutesBefore = Math.Clamp(_settings.Warning.MinutesBefore <= 0 ? 1 : _settings.Warning.MinutesBefore, 1, 1440);
         _settings.Warning.SnoozeMinutes = Math.Clamp(_settings.Warning.SnoozeMinutes <= 0 ? 5 : _settings.Warning.SnoozeMinutes, 1, 1440);
         _settings.Warning.ResultPopupSeconds = Math.Clamp(_settings.Warning.ResultPopupSeconds <= 0 ? 10 : _settings.Warning.ResultPopupSeconds, 1, 3600);
+        if (!Enum.IsDefined(_settings.ArchiveFormat))
+        {
+            _settings.ArchiveFormat = BackupArchiveFormat.Zip;
+        }
+
+        _settings.ZipEnabled = _settings.ArchiveFormat == BackupArchiveFormat.Zip;
         _settings.Mail.Port = Math.Clamp(_settings.Mail.Port <= 0 ? 587 : _settings.Mail.Port, 1, 65535);
         if (string.IsNullOrWhiteSpace(_settings.Mail.Subject))
         {

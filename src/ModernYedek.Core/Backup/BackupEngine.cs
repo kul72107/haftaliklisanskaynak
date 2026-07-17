@@ -1,6 +1,8 @@
 using System.Globalization;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
 using ModernYedek.Core.Cloud;
 using ModernYedek.Core.Logging;
 using ModernYedek.Core.Models;
@@ -113,12 +115,14 @@ public sealed class BackupEngine
 
             var stamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture);
             var targetRunDirectory = Path.Combine(target.Path, stamp);
-            var archiveName = SanitizeFileName(settings.ProfileName) + "-" + stamp + ".zip";
+            var archiveFormat = settings.ArchiveFormat;
+            var archiveLabel = GetArchiveLabel(archiveFormat);
+            var archiveName = SanitizeFileName(settings.ProfileName) + "-" + stamp + GetArchiveExtension(archiveFormat);
             var archivePath = Path.Combine(targetRunDirectory, archiveName);
             Directory.CreateDirectory(targetRunDirectory);
 
-            var archiveProgress = new ArchiveProgressState(progress, estimatedBytes, totalFiles, targets.Count, targetIndex, target.Path);
-            var archiveResult = await Task.Run(() => CreateArchive(sources, archivePath, result.OperationId, archiveProgress, cancellationToken), cancellationToken);
+            var archiveProgress = new ArchiveProgressState(progress, estimatedBytes, totalFiles, targets.Count, targetIndex, target.Path, archiveLabel);
+            var archiveResult = await Task.Run(() => CreateArchive(sources, archivePath, archiveFormat, result.OperationId, archiveProgress, cancellationToken), cancellationToken);
             result.FilesAdded += archiveResult.FilesAdded;
             result.FilesSkipped += archiveResult.FilesSkipped;
 
@@ -133,12 +137,12 @@ public sealed class BackupEngine
                 ReportProgress(
                     progress,
                     archiveProgress.CurrentPercent,
-                    "ZIP olusturulamadi",
+                    $"{archiveLabel} olusturulamadi",
                     archiveResult.Message,
                     archiveProgress.FilesProcessed,
                     archiveProgress.TotalFiles,
                     targetPath: target.Path);
-                await LogAsync(result, BackupLogLevel.Error, "ZIP_FAILED", archiveResult.Message, target: target.Path, cancellationToken: cancellationToken);
+                await LogAsync(result, BackupLogLevel.Error, "ARCHIVE_FAILED", archiveResult.Message, target: target.Path, cancellationToken: cancellationToken);
                 continue;
             }
 
@@ -147,22 +151,22 @@ public sealed class BackupEngine
             ReportProgress(
                 progress,
                 postTargetBase + postTargetStep * 0.25,
-                "ZIP dogrulaniyor",
-                $"ZIP dogrulaniyor: {archivePath}",
+                $"{archiveLabel} dogrulaniyor",
+                $"{archiveLabel} dogrulaniyor: {archivePath}",
                 archiveProgress.FilesProcessed,
                 archiveProgress.TotalFiles,
                 targetPath: target.Path);
-            if (!ValidateArchive(archivePath, out var validateMessage))
+            if (!ValidateArchive(archivePath, archiveFormat, out var validateMessage))
             {
                 ReportProgress(
                     progress,
                     postTargetBase + postTargetStep * 0.25,
-                    "ZIP dogrulanamadi",
+                    $"{archiveLabel} dogrulanamadi",
                     validateMessage,
                     archiveProgress.FilesProcessed,
                     archiveProgress.TotalFiles,
                     targetPath: target.Path);
-                await LogAsync(result, BackupLogLevel.Error, "ZIP_VALIDATE_FAILED", validateMessage, target: target.Path, cancellationToken: cancellationToken);
+                await LogAsync(result, BackupLogLevel.Error, "ARCHIVE_VALIDATE_FAILED", validateMessage, target: target.Path, cancellationToken: cancellationToken);
                 continue;
             }
 
@@ -179,7 +183,7 @@ public sealed class BackupEngine
             result.ArchivePath ??= archivePath;
             result.Sha256 ??= hash;
             result.ArchiveBytes += info.Length;
-            await LogAsync(result, BackupLogLevel.Info, "ZIP_SUCCESS", $"ZIP yedek olusturuldu. SHA256={hash}", target: archivePath, cancellationToken: cancellationToken);
+            await LogAsync(result, BackupLogLevel.Info, "ARCHIVE_SUCCESS", $"{archiveLabel} yedek olusturuldu. SHA256={hash}", target: archivePath, cancellationToken: cancellationToken);
 
             if (settings.Cloud.Enabled && settings.Cloud.UploadAfterBackup && cloudClient is not null)
             {
@@ -263,16 +267,29 @@ public sealed class BackupEngine
             ReportProgress(
                 progress,
                 percent,
-                "Yerel ZIP siliniyor",
-                "Bulut yuklemesi sonrasi yerel ZIP siliniyor.",
+                "Yerel arsiv siliniyor",
+                "Bulut yuklemesi sonrasi yerel arsiv siliniyor.",
                 archiveProgress.FilesProcessed,
                 archiveProgress.TotalFiles,
                 targetPath: archivePath);
-            await LogAsync(result, BackupLogLevel.Info, "LOCAL_ARCHIVE_DELETED", "Bulut yuklemesi sonrasi yerel ZIP silindi.", target: archivePath, cancellationToken: cancellationToken);
+            await LogAsync(result, BackupLogLevel.Info, "LOCAL_ARCHIVE_DELETED", "Bulut yuklemesi sonrasi yerel arsiv silindi.", target: archivePath, cancellationToken: cancellationToken);
         }
     }
 
     private static ArchiveCreateResult CreateArchive(
+        IReadOnlyCollection<BackupSource> sources,
+        string archivePath,
+        BackupArchiveFormat archiveFormat,
+        string operationId,
+        ArchiveProgressState progress,
+        CancellationToken cancellationToken)
+    {
+        return archiveFormat == BackupArchiveFormat.Rar
+            ? CreateRarArchive(sources, archivePath, operationId, progress, cancellationToken)
+            : CreateZipArchive(sources, archivePath, operationId, progress, cancellationToken);
+    }
+
+    private static ArchiveCreateResult CreateZipArchive(
         IReadOnlyCollection<BackupSource> sources,
         string archivePath,
         string operationId,
@@ -382,6 +399,81 @@ public sealed class BackupEngine
         }
     }
 
+    private static ArchiveCreateResult CreateRarArchive(
+        IReadOnlyCollection<BackupSource> sources,
+        string archivePath,
+        string operationId,
+        ArchiveProgressState progress,
+        CancellationToken cancellationToken)
+    {
+        var entries = new List<BackupLogEntry>();
+        var rarExe = FindRarExecutable();
+        var fileCount = CountSourceFilesSafe(sources);
+        if (rarExe is null)
+        {
+            return new ArchiveCreateResult(
+                false,
+                "RAR olusturmak icin WinRAR veya Rar.exe bulunamadi. WinRAR kurun ya da arsiv formatini ZIP secin.",
+                0,
+                fileCount,
+                entries);
+        }
+
+        try
+        {
+            if (File.Exists(archivePath))
+            {
+                File.Delete(archivePath);
+            }
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = rarExe,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(archivePath) ?? Environment.CurrentDirectory
+            };
+            startInfo.ArgumentList.Add("a");
+            startInfo.ArgumentList.Add("-r");
+            startInfo.ArgumentList.Add("-idq");
+            startInfo.ArgumentList.Add("-ep1");
+            startInfo.ArgumentList.Add(archivePath);
+            foreach (var source in sources)
+            {
+                startInfo.ArgumentList.Add(source.Path);
+            }
+
+            var command = RunProcess(startInfo, cancellationToken);
+            if (command.ExitCode > 1)
+            {
+                return new ArchiveCreateResult(false, $"RAR olusturulamadi: {command.Output}", 0, fileCount, entries);
+            }
+
+            if (!File.Exists(archivePath))
+            {
+                return new ArchiveCreateResult(false, "RAR olusturma tamamlandi ama arsiv dosyasi bulunamadi.", 0, fileCount, entries);
+            }
+
+            if (command.ExitCode == 1)
+            {
+                entries.Add(CreateLog(BackupLogLevel.Warning, operationId, string.Empty, archivePath, "RAR_WARNING", command.Output));
+            }
+
+            progress.CompleteExternalArchive(fileCount, "RAR olusturuldu.");
+            return new ArchiveCreateResult(true, "RAR olusturuldu.", fileCount, 0, entries);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return new ArchiveCreateResult(false, ex.Message, 0, fileCount, entries);
+        }
+    }
+
     private static IEnumerable<string> EnumerateFilesSafe(string root, string operationId, List<BackupLogEntry>? entries)
     {
         var pending = new Stack<string>();
@@ -487,7 +579,14 @@ public sealed class BackupEngine
         return total;
     }
 
-    private static bool ValidateArchive(string archivePath, out string message)
+    private static bool ValidateArchive(string archivePath, BackupArchiveFormat archiveFormat, out string message)
+    {
+        return archiveFormat == BackupArchiveFormat.Rar
+            ? ValidateRarArchive(archivePath, out message)
+            : ValidateZipArchive(archivePath, out message);
+    }
+
+    private static bool ValidateZipArchive(string archivePath, out string message)
     {
         try
         {
@@ -513,6 +612,137 @@ public sealed class BackupEngine
             message = $"ZIP acilamadi: {ex.Message}";
             return false;
         }
+    }
+
+    private static bool ValidateRarArchive(string archivePath, out string message)
+    {
+        try
+        {
+            var file = new FileInfo(archivePath);
+            if (!file.Exists || file.Length == 0)
+            {
+                message = "RAR dosyasi bos veya yok.";
+                return false;
+            }
+
+            var rarExe = FindRarExecutable();
+            if (rarExe is null)
+            {
+                message = "RAR dogrulamasi icin WinRAR/Rar.exe bulunamadi.";
+                return false;
+            }
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = rarExe,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(archivePath) ?? Environment.CurrentDirectory
+            };
+            startInfo.ArgumentList.Add("t");
+            startInfo.ArgumentList.Add("-idq");
+            startInfo.ArgumentList.Add(archivePath);
+
+            var result = RunProcess(startInfo, CancellationToken.None);
+            if (result.ExitCode > 1)
+            {
+                message = $"RAR dogrulanamadi: {result.Output}";
+                return false;
+            }
+
+            message = "RAR dogrulandi.";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            message = $"RAR acilamadi: {ex.Message}";
+            return false;
+        }
+    }
+
+    private static string? FindRarExecutable()
+    {
+        foreach (var candidate in EnumerateRarCandidates())
+        {
+            if (!string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> EnumerateRarCandidates()
+    {
+        var pathValue = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        foreach (var directory in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            yield return Path.Combine(directory, "Rar.exe");
+            yield return Path.Combine(directory, "WinRAR.exe");
+        }
+
+        var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        if (!string.IsNullOrWhiteSpace(programFiles))
+        {
+            yield return Path.Combine(programFiles, "WinRAR", "Rar.exe");
+            yield return Path.Combine(programFiles, "WinRAR", "WinRAR.exe");
+        }
+
+        var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+        if (!string.IsNullOrWhiteSpace(programFilesX86))
+        {
+            yield return Path.Combine(programFilesX86, "WinRAR", "Rar.exe");
+            yield return Path.Combine(programFilesX86, "WinRAR", "WinRAR.exe");
+        }
+    }
+
+    private static ProcessCommandResult RunProcess(ProcessStartInfo startInfo, CancellationToken cancellationToken)
+    {
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"{startInfo.FileName} baslatilamadi.");
+
+        var output = new StringBuilder();
+        process.OutputDataReceived += (_, args) =>
+        {
+            if (!string.IsNullOrWhiteSpace(args.Data))
+            {
+                output.AppendLine(args.Data);
+            }
+        };
+        process.ErrorDataReceived += (_, args) =>
+        {
+            if (!string.IsNullOrWhiteSpace(args.Data))
+            {
+                output.AppendLine(args.Data);
+            }
+        };
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        while (!process.WaitForExit(250))
+        {
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                continue;
+            }
+
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch
+            {
+                // Surec zaten kapanmis olabilir.
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        process.WaitForExit();
+        return new ProcessCommandResult(process.ExitCode, output.ToString().Trim());
     }
 
     private static async Task<string> ComputeSha256Async(string path, CancellationToken cancellationToken)
@@ -565,6 +795,16 @@ public sealed class BackupEngine
         return string.IsNullOrWhiteSpace(sanitized) ? "Yedek" : sanitized;
     }
 
+    private static string GetArchiveExtension(BackupArchiveFormat archiveFormat)
+    {
+        return archiveFormat == BackupArchiveFormat.Rar ? ".rar" : ".zip";
+    }
+
+    private static string GetArchiveLabel(BackupArchiveFormat archiveFormat)
+    {
+        return archiveFormat == BackupArchiveFormat.Rar ? "RAR" : "ZIP";
+    }
+
     private static void ReportProgress(
         IProgress<BackupProgress>? progress,
         double percent,
@@ -601,9 +841,11 @@ public sealed class BackupEngine
         private const long ReportStepBytes = 1024 * 1024;
         private readonly IProgress<BackupProgress>? _progress;
         private readonly long _totalBytes;
+        private readonly long _sourceBytes;
         private readonly long _baseBytes;
         private readonly int _baseFiles;
         private readonly string _targetPath;
+        private readonly string _archiveLabel;
         private long _currentBytes;
         private long _lastReportedBytes;
         private int _currentFiles;
@@ -614,15 +856,18 @@ public sealed class BackupEngine
             int sourceFiles,
             int targetCount,
             int targetIndex,
-            string targetPath)
+            string targetPath,
+            string archiveLabel)
         {
             _progress = progress;
-            _totalBytes = Math.Max(sourceBytes, 1) * Math.Max(targetCount, 1);
-            _baseBytes = Math.Max(sourceBytes, 1) * Math.Max(targetIndex - 1, 0);
+            _sourceBytes = Math.Max(sourceBytes, 1);
+            _totalBytes = _sourceBytes * Math.Max(targetCount, 1);
+            _baseBytes = _sourceBytes * Math.Max(targetIndex - 1, 0);
             _baseFiles = Math.Max(sourceFiles, 0) * Math.Max(targetIndex - 1, 0);
             TotalFiles = Math.Max(sourceFiles, 0) * Math.Max(targetCount, 1);
             _targetPath = targetPath;
-            Report("ZIP olusturuluyor", $"ZIP olusturuluyor ({targetIndex}/{Math.Max(targetCount, 1)}): {targetPath}", force: true);
+            _archiveLabel = archiveLabel;
+            Report($"{_archiveLabel} olusturuluyor", $"{_archiveLabel} olusturuluyor ({targetIndex}/{Math.Max(targetCount, 1)}): {targetPath}", force: true);
         }
 
         public int FilesProcessed => Math.Min(_baseFiles + _currentFiles, TotalFiles);
@@ -649,14 +894,21 @@ public sealed class BackupEngine
             if (_currentBytes - _lastReportedBytes >= ReportStepBytes)
             {
                 _lastReportedBytes = _currentBytes;
-                Report("ZIP olusturuluyor", $"Dosya ekleniyor: {Path.GetFileName(currentFile)}", currentFile);
+                Report($"{_archiveLabel} olusturuluyor", $"Dosya ekleniyor: {Path.GetFileName(currentFile)}", currentFile);
             }
         }
 
         public void CompleteFile(string currentFile)
         {
             _currentFiles++;
-            Report("ZIP olusturuluyor", $"Dosya eklendi: {Path.GetFileName(currentFile)}", currentFile, force: true);
+            Report($"{_archiveLabel} olusturuluyor", $"Dosya eklendi: {Path.GetFileName(currentFile)}", currentFile, force: true);
+        }
+
+        public void CompleteExternalArchive(int filesProcessed, string message)
+        {
+            _currentFiles = Math.Max(_currentFiles, filesProcessed);
+            _currentBytes = Math.Max(_currentBytes, _sourceBytes);
+            Report($"{_archiveLabel} olusturuldu", message, force: true);
         }
 
         private void Report(string stage, string message, string? currentFile = null, bool force = false)
@@ -684,4 +936,6 @@ public sealed class BackupEngine
         int FilesAdded,
         int FilesSkipped,
         List<BackupLogEntry> Entries);
+
+    private sealed record ProcessCommandResult(int ExitCode, string Output);
 }

@@ -527,8 +527,6 @@
                                         <TextBox x:Name="PrefixBox" Text="yedekler" ToolTip="Buluttaki klasör ön ekidir. Örnek: yedekler veya ofis1/yedekler"/>
                                     </StackPanel>
                                 </UniformGrid>
-                                <TextBlock Text="Lisans e-postasi" Foreground="{StaticResource Muted}" Margin="0,12,0,0" ToolTip="Lisans alirken verdiginiz e-posta adresi."/>
-                                <TextBox x:Name="LicenseEmailBox" ToolTip="Lisans alirken verdiginiz e-posta adresini yazin. Key ile birlikte kontrol edilir."/>
                                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                                     <Button Content="Service Account JSON İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportGoogleKey_Click" ToolTip="Google Cloud service account JSON dosyasını seçer ve içeriğini şifreli secret dosyasına kaydeder."/>
                                     <Button Content="Bağlantıyı Test Et" Style="{StaticResource PrimaryButtonStyle}" Click="TestCloud_Click" ToolTip="Bucket adı ve service account key ile Google Cloud bağlantısının çalışıp çalışmadığını kontrol eder."/>
@@ -572,6 +570,8 @@
                                 <TextBlock Text="Yeni sistemde lisans keyi ve e-posta birlikte kontrol edilir." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" ToolTip="GitHub lisans listesindeki key hash ve e-posta hash birlikte eslesmelidir."/>
                                 <TextBlock Text="Lisans anahtari" Foreground="{StaticResource Muted}" Margin="0,4,0,0" ToolTip="Size verilen manuel lisans key'i."/>
                                 <TextBox x:Name="LicenseKeyBox" ToolTip="Size verilen lisans anahtarını buraya yapıştırın. Örnek: MY-...."/>
+                                <TextBlock Text="Lisans e-postasi" Foreground="{StaticResource Muted}" Margin="0,12,0,0" ToolTip="Lisans alirken verdiginiz e-posta adresi."/>
+                                <TextBox x:Name="LicenseEmailBox" ToolTip="Lisans alirken verdiginiz e-posta adresini yazin. Key ile birlikte kontrol edilir."/>
                                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                                     <Button Content="Aktiflestir" Style="{StaticResource PrimaryButtonStyle}" Click="ActivateLicense_Click" ToolTip="Girilen lisans anahtarını internet listesinden kontrol eder ve bu bilgisayarda etkinleştirir."/>
                                     <Button Content="Dogrula" Style="{StaticResource SecondaryButtonStyle}" Click="ValidateLicense_Click" ToolTip="Mevcut lisansın hâlâ geçerli, süresi dolmamış ve iptal edilmemiş olduğunu kontrol eder."/>
@@ -622,7 +622,11 @@
                                 <TextBlock Text="Genel ayarlar" FontSize="18" FontWeight="SemiBold" ToolTip="Profil adı, ZIP seçimi ve eski INI içe aktarma ayarları."/>
                                 <TextBlock Text="Profil adı" Foreground="{StaticResource Muted}" Margin="0,14,0,0" ToolTip="Bu yedekleme ayar grubunu tanımlayan isim."/>
                                 <TextBox x:Name="ProfileNameBox" ToolTip="Yedek profilinin adını yazın. Bu ad loglarda ve bulut metadata bilgisinde kullanılabilir."/>
-                                <CheckBox x:Name="ZipEnabledCheck" Content="ZIP formatında yedekle" Margin="0,14,0,8" ToolTip="Açık olursa kaynaklar tek bir ZIP arşivi olarak yedeklenir."/>
+                                <TextBlock Text="Arsiv formati" Foreground="{StaticResource Muted}" Margin="0,14,0,0" ToolTip="Yedek dosyasinin ZIP veya RAR olarak olusturulacagini belirler."/>
+                                <ComboBox x:Name="ArchiveFormatBox" SelectedIndex="0" Margin="0,4,0,8" ToolTip="ZIP dahili olarak desteklenir. RAR icin bilgisayarda WinRAR/Rar.exe kurulu olmalidir.">
+                                    <ComboBoxItem Content="ZIP"/>
+                                    <ComboBoxItem Content="RAR"/>
+                                </ComboBox>
                                 <CheckBox x:Name="MinimizeToTrayOnCloseCheck" Content="Kapatınca veya küçültünce sağ alta al ve arka planda çalıştır" Margin="0,0,0,8" ToolTip="Açık olursa pencere kapatıldığında veya küçültüldüğünde uygulama kapanmaz; sağ alttaki sistem tepsisi simgesinden tekrar açılır. Varsayılan olarak açıktır."/>
                                 <CheckBox x:Name="StartWithWindowsCheck" Content="Windows başlangıcında MYedek'i çalıştır" Margin="0,0,0,8" ToolTip="Açık olursa Windows oturumunuz açıldığında MYedek otomatik başlar."/>
                                 <CheckBox x:Name="AutoCloseResultPopupCheck" Content="Yedek sonucunu gösteren pencereyi otomatik kapat" Margin="0,0,0,8" ToolTip="Açık olursa yedekleme sonucunu gösteren pencere belirlenen süre sonunda kapanır."/>

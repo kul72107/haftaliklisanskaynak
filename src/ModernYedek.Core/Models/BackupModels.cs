@@ -22,10 +22,18 @@ public enum BackupLogLevel
     Error
 }
 
+public enum BackupArchiveFormat
+{
+    Zip,
+    Rar
+}
+
 public sealed class BackupSettings
 {
     public string ProfileName { get; set; } = "Varsayilan Yedek";
     public bool ZipEnabled { get; set; } = true;
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public BackupArchiveFormat ArchiveFormat { get; set; } = BackupArchiveFormat.Zip;
     public List<BackupSource> Sources { get; set; } = [];
     public List<BackupTarget> Targets { get; set; } = [];
     public ScheduleSettings Schedule { get; set; } = new();

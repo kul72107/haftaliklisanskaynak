@@ -140,6 +140,7 @@ static async Task TestBackupEngine()
 
     Assert(result.Outcome == BackupOutcome.Success, "backup success");
     Assert(result.ArchivePath is not null && File.Exists(result.ArchivePath), "zip exists");
+    Assert(Path.GetExtension(result.ArchivePath!) == ".zip", "zip extension");
     Assert(!string.IsNullOrWhiteSpace(result.Sha256) && result.Sha256.Length == 64, "sha");
     Assert(result.FilesAdded == 2, "files added");
     Assert(cloud.Uploads.Count == 1, "cloud upload called");
@@ -413,6 +414,9 @@ static async Task TestLegacyAppOptionsSurfaced()
     Assert(xaml.Contains("StartWithWindowsCheck", StringComparison.Ordinal), "startup ui");
     Assert(xaml.Contains("MailEnabledCheck", StringComparison.Ordinal), "mail ui");
     Assert(xaml.Contains("SqlStopBeforeBackupCheck", StringComparison.Ordinal), "sql ui");
+    Assert(xaml.Contains("ArchiveFormatBox", StringComparison.Ordinal), "archive format ui");
+    Assert(xaml.Contains("<ComboBoxItem Content=\"RAR\"", StringComparison.Ordinal), "rar option ui");
+    Assert(xaml.IndexOf("LicensePanel", StringComparison.Ordinal) < xaml.IndexOf("LicenseEmailBox", StringComparison.Ordinal), "license email in license panel");
     Assert(mainCode.Contains("ApplyStartupRegistration", StringComparison.Ordinal), "startup registry code");
     Assert(mainCode.Contains("BackupWarningWindow", StringComparison.Ordinal), "warning popup code");
     Assert(mainCode.Contains("TrySendBackupReportEmailAsync", StringComparison.Ordinal), "mail report code");
@@ -421,6 +425,8 @@ static async Task TestLegacyAppOptionsSurfaced()
     Assert(mainCode.Contains("AutoCloseMessageWindow", StringComparison.Ordinal), "auto close result code");
     Assert(models.Contains("StartWithWindows", StringComparison.Ordinal), "startup model");
     Assert(models.Contains("SendLogAfterBackup", StringComparison.Ordinal), "mail report model");
+    Assert(models.Contains("BackupArchiveFormat", StringComparison.Ordinal), "archive format model");
+    Assert(models.Contains("Rar", StringComparison.Ordinal), "rar format model");
     Assert(importer.Contains("\"MAILMI\"", StringComparison.Ordinal), "legacy mail flag import");
     Assert(importer.Contains("\"SERVER\"", StringComparison.Ordinal), "legacy server flag import");
     Assert(importer.Contains("\"TEK\"", StringComparison.Ordinal), "legacy one time flag import");
@@ -580,6 +586,7 @@ static async Task TestDefaultAppBehavior()
 
     Assert(settings.AppBehavior.MinimizeToTrayOnClose, "default tray on close");
     Assert(!settings.AppBehavior.StartWithWindows, "default startup disabled");
+    Assert(settings.ArchiveFormat == BackupArchiveFormat.Zip, "default archive format zip");
     Assert(!settings.Warning.Enabled, "default warning disabled");
     Assert(settings.Warning.MinutesBefore == 1, "default warning minutes");
     Assert(settings.Warning.SnoozeMinutes == 5, "default snooze minutes");

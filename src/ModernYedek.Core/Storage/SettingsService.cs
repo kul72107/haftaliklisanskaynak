@@ -43,6 +43,7 @@ public sealed class SettingsService
         {
             ProfileName = "Datasoft Yedek",
             ZipEnabled = true,
+            ArchiveFormat = BackupArchiveFormat.Zip,
             Schedule = new ScheduleSettings
             {
                 Enabled = true,
