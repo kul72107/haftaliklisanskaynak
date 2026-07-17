@@ -358,7 +358,7 @@ static async Task TestStaticTxtLicenseValidationKeepsExpiry()
 
 static async Task TestAdminPanelCustomDuration()
 {
-    var html = await File.ReadAllTextAsync(Path.Combine("docs", "admin", "index.html"));
+    var html = await File.ReadAllTextAsync(Path.Combine("tools", "license-admin", "index.html"));
     Assert(html.Contains("<option value=\"custom\">Custom</option>", StringComparison.OrdinalIgnoreCase), "custom duration option");
     Assert(html.Contains("customDurationDays", StringComparison.OrdinalIgnoreCase), "custom duration input");
     Assert(html.Contains("durationMode === \"custom\"", StringComparison.OrdinalIgnoreCase), "custom duration logic");

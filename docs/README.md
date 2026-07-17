@@ -14,14 +14,19 @@ Guvenlik kurallari:
 GitHub Pages `main` branch ve `/docs` klasorunden acilinca dosya URL'leri:
 
 ```txt
-https://kul72107.github.io/haftaliklisanskaynak/admin/
 https://kul72107.github.io/haftaliklisanskaynak/licenses.txt
 https://kul72107.github.io/haftaliklisanskaynak/licenses.json
 https://kul72107.github.io/haftaliklisanskaynak/revoked.txt
 ```
 
-`admin/` paneli key uretir, key SHA256 hashini ve e-posta SHA256 hashini hesaplar, `licenses.txt` satiri hazirlar.
-GitHub Pages statik oldugu icin panel dosyayi otomatik kaydetmez; uretilen satir GitHub'da
+Admin panel public GitHub Pages altinda yayinlanmaz. Yerel panel:
+
+```txt
+tools/license-admin/index.html
+```
+
+Bu panel key uretir, key SHA256 hashini ve e-posta SHA256 hashini hesaplar, `licenses.txt` satiri hazirlar.
+Panel dosyayi otomatik kaydetmez; uretilen satir GitHub'da
 `docs/licenses.txt` dosyasina elle yapistirilir.
 
 ## TXT formati

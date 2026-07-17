@@ -59,8 +59,8 @@ Gercek key Google Form'a gonderilmez. Lisans hash, e-posta/e-posta hash ve cihaz
 
 ## Akis
 
-1. Panelden key uret.
-2. Musterinin e-postasini panele gir.
+1. Yerel `tools/license-admin/index.html` panelinden key uret.
+2. Musterinin e-postasini yerel panele gir.
 3. Uretilen `licenseHash|emailHash|gun|active|not` satirini `docs/licenses.txt` sonuna ekle.
 4. Kullanici uygulamaya key + ayni e-postayi girer.
 5. Uygulama hash listesinden key ve e-postayi birlikte dogrular.
