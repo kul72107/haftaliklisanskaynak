@@ -56,6 +56,21 @@ public sealed class SettingsService
                 ],
                 Times = ["18:00"]
             },
+            OneTimeSchedule = new OneTimeScheduleSettings(),
+            Warning = new BackupWarningSettings
+            {
+                Enabled = false,
+                MinutesBefore = 1,
+                SnoozeMinutes = 5,
+                AutoCloseResultPopup = false,
+                ResultPopupSeconds = 10
+            },
+            SqlService = new SqlServiceSettings
+            {
+                StopBeforeBackup = false,
+                ServiceName = "MSSQLSERVER",
+                RestartAfterBackup = true
+            },
             Retention = new RetentionSettings
             {
                 Enabled = true,
@@ -66,6 +81,14 @@ public sealed class SettingsService
             {
                 Provider = "GoogleCloudStorage",
                 ObjectPrefix = "yedekler"
+            },
+            Mail = new MailSettings
+            {
+                Enabled = false,
+                SendLogAfterBackup = false,
+                Port = 587,
+                UseSsl = true,
+                Subject = "Yedek Raporu"
             },
             License = new LicenseSettings
             {
@@ -85,7 +108,8 @@ public sealed class SettingsService
             },
             AppBehavior = new AppBehaviorSettings
             {
-                MinimizeToTrayOnClose = true
+                MinimizeToTrayOnClose = true,
+                StartWithWindows = false
             }
         };
     }

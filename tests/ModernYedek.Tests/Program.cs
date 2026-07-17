@@ -23,6 +23,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("ResurrectSoft copyright notice", TestResurrectSoftCopyrightNotice),
     ("Standard window chrome", TestStandardWindowChrome),
     ("Backup progress popup", TestBackupProgressPopup),
+    ("Legacy app options surfaced", TestLegacyAppOptionsSurfaced),
     ("Animated pattern background", TestAnimatedPatternBackground),
     ("Premium visual asset set", TestPremiumVisualAssetSet),
     ("Responsive visual constraints", TestResponsiveVisualConstraints),
@@ -68,6 +69,12 @@ static async Task TestLegacyIniImport()
         [DURUM]
         ZIPMI=YES
         PERIYODIK=YES
+        MAILMI=YES
+        UYARI=YES
+        UYARIDK=3
+        UYARIKAPAT=YES
+        SERVER=YES
+        TEK=YES
         [KLASORLER]
         KLASOR0=C:\Data
         KLASORTİP0=KLASÖR
@@ -93,6 +100,13 @@ static async Task TestLegacyIniImport()
     Assert(result.Settings.Schedule.Days.Contains(DayOfWeek.Monday), "monday");
     Assert(result.Settings.Schedule.Days.Contains(DayOfWeek.Friday), "friday");
     Assert(result.Settings.Schedule.Times.Single() == "18:00", "time");
+    Assert(result.Settings.Mail.Enabled, "mail enabled import");
+    Assert(result.Settings.Mail.SendLogAfterBackup, "mail report import");
+    Assert(result.Settings.Warning.Enabled, "warning enabled import");
+    Assert(result.Settings.Warning.MinutesBefore == 3, "warning minutes import");
+    Assert(result.Settings.Warning.AutoCloseResultPopup, "auto close result import");
+    Assert(result.Settings.SqlService.StopBeforeBackup, "sql service import");
+    Assert(result.Settings.OneTimeSchedule.Enabled, "one time import");
     Assert(result.MailPassword == "secret", "mail password");
 }
 
@@ -229,18 +243,27 @@ static async Task TestLicenseCache()
 static async Task TestStaticTxtLicense()
 {
     var key = "MY-TXT-TEST-0001";
+    var email = "customer@example.com";
     var hash = StaticLicenseClient.HashLicenseKey(key);
+    var emailHash = StaticLicenseClient.HashEmail(email);
     var messyKey = " \u200Bmy\u2011txt\u2013test\u20140001 ";
     Assert(StaticLicenseClient.HashLicenseKey(messyKey) == hash, "static license key normalization");
+    Assert(StaticLicenseClient.HashEmail(" CUSTOMER@example.com ") == emailHash, "static license email normalization");
     var listUrl = "https://license.test/licenses.txt";
     var revokedUrl = "https://license.test/revoked.txt";
     using var http = new HttpClient(new FakeLicenseHttpHandler(new Dictionary<string, string>
     {
-        [listUrl] = $"{hash}|7|active|unit-test",
+        [listUrl] = $"{hash}|{emailHash}|7|active|unit-test",
         [revokedUrl] = ""
     }));
 
-    var result = await new StaticLicenseClient(http).ActivateAsync(key, new LicenseSettings
+    var client = new StaticLicenseClient(http);
+    var result = await client.ActivateAsync(key, email, new LicenseSettings
+    {
+        LicenseListUrl = listUrl,
+        RevokedListUrl = revokedUrl
+    }, "machine-test");
+    var wrongEmail = await client.ActivateAsync(key, "wrong@example.com", new LicenseSettings
     {
         LicenseListUrl = listUrl,
         RevokedListUrl = revokedUrl
@@ -249,25 +272,30 @@ static async Task TestStaticTxtLicense()
     Assert(result.IsValid, "static license valid");
     Assert(result.Provider == "github-pages-txt", "static license provider");
     Assert(result.LicenseId == hash, "static license hash");
+    Assert(result.CustomerEmail == email, "static license email");
     Assert(result.PaidUntil is not null && result.PaidUntil.Value > DateTimeOffset.UtcNow.AddDays(6), "static license paid until");
     Assert(result.OfflineUntil == result.PaidUntil, "static license offline until");
+    Assert(!wrongEmail.IsValid, "static license rejects wrong email");
+    Assert(wrongEmail.Message.Contains("e-posta", StringComparison.OrdinalIgnoreCase), "wrong email message");
 }
 
 static async Task TestStaticTxtRevocation()
 {
     var key = "MY-TXT-REVOKED-0001";
+    var email = "revoked@example.com";
     var hash = StaticLicenseClient.HashLicenseKey(key);
+    var emailHash = StaticLicenseClient.HashEmail(email);
     var listUrl = "https://license.test/licenses.txt";
     var revokedUrl = "https://license.test/revoked.txt";
     using var http = new HttpClient(new FakeLicenseHttpHandler(new Dictionary<string, string>
     {
-        [listUrl] = $"{hash}|7|active|unit-test",
+        [listUrl] = $"{hash}|{emailHash}|7|active|unit-test",
         [revokedUrl] = hash
     }));
 
     var client = new StaticLicenseClient(http);
     var revocation = await client.CheckRevocationAsync(hash, revokedUrl);
-    var activation = await client.ActivateAsync(key, new LicenseSettings
+    var activation = await client.ActivateAsync(key, email, new LicenseSettings
     {
         LicenseListUrl = listUrl,
         RevokedListUrl = revokedUrl
@@ -282,18 +310,20 @@ static async Task TestStaticTxtRevocation()
 static async Task TestStaticTxtLicenseValidationKeepsExpiry()
 {
     var key = "MY-KEEP-EXPIRY";
+    var email = "keep@example.com";
     var hash = StaticLicenseClient.HashLicenseKey(key);
+    var emailHash = StaticLicenseClient.HashEmail(email);
     var licenseUrl = "https://license.test/licenses.txt";
     var revokedUrl = "https://license.test/revoked.txt";
     var paidUntil = DateTimeOffset.UtcNow.AddDays(3);
     using var http = new HttpClient(new FakeLicenseHttpHandler(new Dictionary<string, string>
     {
-        [licenseUrl] = $"{hash}|7|active|keep-expiry",
+        [licenseUrl] = $"{hash}|{emailHash}|7|active|keep-expiry",
         [revokedUrl] = "# none"
     }));
 
     var client = new StaticLicenseClient(http);
-    var result = await client.ValidateExistingAsync(key, new LicenseSettings
+    var result = await client.ValidateExistingAsync(key, email, new LicenseSettings
     {
         LicenseListUrl = licenseUrl,
         RevokedListUrl = revokedUrl
@@ -302,6 +332,7 @@ static async Task TestStaticTxtLicenseValidationKeepsExpiry()
         IsValid = true,
         State = LicenseState.Active,
         LicenseId = hash,
+        CustomerEmail = email,
         InstanceId = "existing-instance",
         PaidUntil = paidUntil,
         OfflineUntil = paidUntil
@@ -315,7 +346,7 @@ static async Task TestStaticTxtLicenseValidationKeepsExpiry()
         [licenseUrl] = "# removed",
         [revokedUrl] = "# none"
     }));
-    var missing = await new StaticLicenseClient(missingHttp).ValidateExistingAsync(key, new LicenseSettings
+    var missing = await new StaticLicenseClient(missingHttp).ValidateExistingAsync(key, email, new LicenseSettings
     {
         LicenseListUrl = licenseUrl,
         RevokedListUrl = revokedUrl
@@ -331,6 +362,9 @@ static async Task TestAdminPanelCustomDuration()
     Assert(html.Contains("<option value=\"custom\">Custom</option>", StringComparison.OrdinalIgnoreCase), "custom duration option");
     Assert(html.Contains("customDurationDays", StringComparison.OrdinalIgnoreCase), "custom duration input");
     Assert(html.Contains("durationMode === \"custom\"", StringComparison.OrdinalIgnoreCase), "custom duration logic");
+    Assert(html.Contains("licenseEmail", StringComparison.OrdinalIgnoreCase), "license email input");
+    Assert(html.Contains("emailHash", StringComparison.OrdinalIgnoreCase), "license email hash output");
+    Assert(html.Contains("[hash, emailHash, durationDays, status, note].join(\"|\")", StringComparison.Ordinal), "license txt email format");
 }
 
 static async Task TestResurrectSoftCopyrightNotice()
@@ -363,6 +397,33 @@ static async Task TestBackupProgressPopup()
     Assert(mainCode.Contains("new Progress<BackupProgress>", StringComparison.Ordinal), "backup progress wired");
     Assert(mainCode.Contains("Zamanlanmis yedekleme hazirlaniyor.", StringComparison.Ordinal), "scheduled backup popup text");
     Assert(!normalizedMainCode.Contains("if (triggeredBySchedule)\n        {\n            return null;\n        }", StringComparison.Ordinal), "scheduled backup popup not skipped");
+}
+
+static async Task TestLegacyAppOptionsSurfaced()
+{
+    var xaml = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml"));
+    var mainCode = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.App", "MainWindow.xaml.cs"));
+    var models = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.Core", "Models", "BackupModels.cs"));
+    var importer = await File.ReadAllTextAsync(Path.Combine("src", "ModernYedek.Core", "Import", "LegacyIniImporter.cs"));
+
+    Assert(File.Exists(Path.Combine("src", "ModernYedek.App", "BackupWarningWindow.xaml")), "warning popup xaml exists");
+    Assert(File.Exists(Path.Combine("src", "ModernYedek.App", "AutoCloseMessageWindow.xaml")), "auto close popup xaml exists");
+    Assert(xaml.Contains("WarningEnabledCheck", StringComparison.Ordinal), "warning ui");
+    Assert(xaml.Contains("OneTimeEnabledCheck", StringComparison.Ordinal), "one time ui");
+    Assert(xaml.Contains("StartWithWindowsCheck", StringComparison.Ordinal), "startup ui");
+    Assert(xaml.Contains("MailEnabledCheck", StringComparison.Ordinal), "mail ui");
+    Assert(xaml.Contains("SqlStopBeforeBackupCheck", StringComparison.Ordinal), "sql ui");
+    Assert(mainCode.Contains("ApplyStartupRegistration", StringComparison.Ordinal), "startup registry code");
+    Assert(mainCode.Contains("BackupWarningWindow", StringComparison.Ordinal), "warning popup code");
+    Assert(mainCode.Contains("TrySendBackupReportEmailAsync", StringComparison.Ordinal), "mail report code");
+    Assert(mainCode.Contains("StopSqlServiceForBackupAsync", StringComparison.Ordinal), "sql stop code");
+    Assert(mainCode.Contains("ReadOneTimeRunAt", StringComparison.Ordinal), "one time parse code");
+    Assert(mainCode.Contains("AutoCloseMessageWindow", StringComparison.Ordinal), "auto close result code");
+    Assert(models.Contains("StartWithWindows", StringComparison.Ordinal), "startup model");
+    Assert(models.Contains("SendLogAfterBackup", StringComparison.Ordinal), "mail report model");
+    Assert(importer.Contains("\"MAILMI\"", StringComparison.Ordinal), "legacy mail flag import");
+    Assert(importer.Contains("\"SERVER\"", StringComparison.Ordinal), "legacy server flag import");
+    Assert(importer.Contains("\"TEK\"", StringComparison.Ordinal), "legacy one time flag import");
 }
 
 static async Task TestAnimatedPatternBackground()
@@ -518,11 +579,20 @@ static async Task TestDefaultAppBehavior()
     var settings = SettingsService.CreateDefault();
 
     Assert(settings.AppBehavior.MinimizeToTrayOnClose, "default tray on close");
+    Assert(!settings.AppBehavior.StartWithWindows, "default startup disabled");
+    Assert(!settings.Warning.Enabled, "default warning disabled");
+    Assert(settings.Warning.MinutesBefore == 1, "default warning minutes");
+    Assert(settings.Warning.SnoozeMinutes == 5, "default snooze minutes");
+    Assert(!settings.Mail.Enabled, "default mail disabled");
+    Assert(!settings.Mail.SendLogAfterBackup, "default mail report disabled");
+    Assert(!settings.SqlService.StopBeforeBackup, "default sql stop disabled");
+    Assert(settings.SqlService.RestartAfterBackup, "default sql restart enabled");
     Assert(settings.License.Required, "license required by default");
     await service.SaveAsync(settings);
 
     var loaded = await service.LoadAsync();
     Assert(loaded.AppBehavior.MinimizeToTrayOnClose, "saved tray on close");
+    Assert(!loaded.AppBehavior.StartWithWindows, "saved startup disabled");
 }
 
 static Task TestRetention()

@@ -1,8 +1,9 @@
 # Aktivasyon Sinyali
 
-GitHub Pages lisans listesi sadece okunur. Uygulama ilk aktivasyonda lisansi
-yerel olarak `secrets.dat` icinde saklar; bu yuzden hash satirini `licenses.txt`
-dosyasindan sildikten sonra ayni bilgisayar sure bitene kadar calismaya devam eder.
+GitHub Pages lisans listesi sadece okunur. Uygulama lisansi key + e-posta
+eslesmesiyle dogrular ve basarili sonucu yerel olarak `secrets.dat` icinde
+sifreli cache'ler. Lisans gunu GitHub'daki satirdaki sureye ve ilk aktivasyon
+zamanina gore hesaplanir; yerel ayar dosyasini degistirmek sureyi uzatmaz.
 
 Aktivasyon oldugunu gorebilmek icin ayrica bir HTTP endpoint gerekir. En kolay
 gecici cozum Google Form'dur.
@@ -13,6 +14,8 @@ Formda su kisa cevap alanlarini olustur:
 
 ```txt
 license_hash
+email
+email_hash
 machine_id
 computer_name
 activated_at
@@ -52,17 +55,18 @@ Google Form bilgileri geldikten sonra `License` bolumu su sekilde doldurulur:
 }
 ```
 
-Gercek key Google Form'a gonderilmez. Sadece hash ve cihaz bilgisi gider.
+Gercek key Google Form'a gonderilmez. Lisans hash, e-posta/e-posta hash ve cihaz bilgisi gider.
 
 ## Akis
 
 1. Panelden key uret.
-2. Uretilen hash satirini `docs/licenses.txt` sonuna ekle.
-3. Kullanici keyi uygulamaya girer.
-4. Uygulama hash listesinden ilk aktivasyonu yapar.
-5. Uygulama lisansi bu bilgisayarda sifreli saklar.
-6. `ActivationSignalUrl` doluysa Google Form'a sinyal gonderir.
-7. Sen Google Sheet'te aktivasyonu gorunce `licenses.txt` satirini silebilirsin.
+2. Musterinin e-postasini panele gir.
+3. Uretilen `licenseHash|emailHash|gun|active|not` satirini `docs/licenses.txt` sonuna ekle.
+4. Kullanici uygulamaya key + ayni e-postayi girer.
+5. Uygulama hash listesinden key ve e-postayi birlikte dogrular.
+6. Uygulama lisansi bu bilgisayarda sifreli saklar.
+7. `ActivationSignalUrl` doluysa Google Form'a sinyal gonderir.
+8. Lisansi iptal etmek istersen key hashini `revoked.txt` dosyasina eklersin.
 
 ## Lisans iptali
 

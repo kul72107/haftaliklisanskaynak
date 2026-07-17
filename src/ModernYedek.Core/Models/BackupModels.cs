@@ -29,6 +29,9 @@ public sealed class BackupSettings
     public List<BackupSource> Sources { get; set; } = [];
     public List<BackupTarget> Targets { get; set; } = [];
     public ScheduleSettings Schedule { get; set; } = new();
+    public OneTimeScheduleSettings OneTimeSchedule { get; set; } = new();
+    public BackupWarningSettings Warning { get; set; } = new();
+    public SqlServiceSettings SqlService { get; set; } = new();
     public RetentionSettings Retention { get; set; } = new();
     public CloudSettings Cloud { get; set; } = new();
     public MailSettings Mail { get; set; } = new();
@@ -58,6 +61,28 @@ public sealed class ScheduleSettings
     public List<string> Times { get; set; } = [];
 }
 
+public sealed class OneTimeScheduleSettings
+{
+    public bool Enabled { get; set; }
+    public DateTimeOffset? RunAt { get; set; }
+}
+
+public sealed class BackupWarningSettings
+{
+    public bool Enabled { get; set; }
+    public int MinutesBefore { get; set; } = 1;
+    public int SnoozeMinutes { get; set; } = 5;
+    public bool AutoCloseResultPopup { get; set; }
+    public int ResultPopupSeconds { get; set; } = 10;
+}
+
+public sealed class SqlServiceSettings
+{
+    public bool StopBeforeBackup { get; set; }
+    public string ServiceName { get; set; } = "MSSQLSERVER";
+    public bool RestartAfterBackup { get; set; } = true;
+}
+
 public sealed class RetentionSettings
 {
     public bool Enabled { get; set; } = true;
@@ -77,8 +102,12 @@ public sealed class CloudSettings
 
 public sealed class MailSettings
 {
+    public bool Enabled { get; set; }
+    public bool SendLogAfterBackup { get; set; }
     public string Recipient { get; set; } = string.Empty;
     public string Server { get; set; } = string.Empty;
+    public int Port { get; set; } = 587;
+    public bool UseSsl { get; set; } = true;
     public string UserName { get; set; } = string.Empty;
     public string Subject { get; set; } = "Yedek Raporu";
 }
@@ -136,6 +165,7 @@ public sealed class UpdateSettings
 public sealed class AppBehaviorSettings
 {
     public bool MinimizeToTrayOnClose { get; set; } = true;
+    public bool StartWithWindows { get; set; }
 }
 
 public sealed class BackupLogEntry

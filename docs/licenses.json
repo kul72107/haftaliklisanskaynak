@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
+  "format": "licenseHash|emailHash|durationDays|status|note",
   "licenses": []
 }
-

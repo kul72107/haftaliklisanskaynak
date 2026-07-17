@@ -16,14 +16,22 @@ public sealed class StaticLicenseClient
 
     public async Task<LicenseValidationResult> ActivateAsync(
         string licenseKey,
+        string email,
         LicenseSettings settings,
         string machineId,
         CancellationToken cancellationToken = default)
     {
         var normalizedKey = NormalizeKey(licenseKey);
-        var hash = HashLicenseKey(normalizedKey);
+        var normalizedEmail = NormalizeEmail(email);
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            return Invalid("Lisans aktivasyonu icin e-posta gerekli.", HashLicenseKey(normalizedKey));
+        }
 
-        var record = await FindUsableLicenseRecordAsync(hash, settings, cancellationToken);
+        var hash = HashLicenseKey(normalizedKey);
+        var emailHash = HashEmail(normalizedEmail);
+
+        var record = await FindUsableLicenseRecordAsync(hash, normalizedEmail, emailHash, settings, cancellationToken);
         if (!record.IsValid)
         {
             return record.Result;
@@ -41,7 +49,7 @@ public sealed class StaticLicenseClient
             Provider = "github-pages-txt",
             LicenseId = hash,
             InstanceId = BuildInstanceId(hash, machineId),
-            CustomerEmail = string.Empty,
+            CustomerEmail = normalizedEmail,
             ProductId = "modern-yedek",
             VariantId = durationDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Plan = $"manual_{durationDays}d",
@@ -55,15 +63,23 @@ public sealed class StaticLicenseClient
 
     public async Task<LicenseValidationResult> ValidateExistingAsync(
         string licenseKey,
+        string email,
         LicenseSettings settings,
         string machineId,
         LicenseValidationResult? existingResult,
         CancellationToken cancellationToken = default)
     {
         var normalizedKey = NormalizeKey(licenseKey);
-        var hash = HashLicenseKey(normalizedKey);
+        var normalizedEmail = NormalizeEmail(email);
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            return Invalid("Lisans dogrulamasi icin e-posta gerekli.", HashLicenseKey(normalizedKey));
+        }
 
-        var record = await FindUsableLicenseRecordAsync(hash, settings, cancellationToken);
+        var hash = HashLicenseKey(normalizedKey);
+        var emailHash = HashEmail(normalizedEmail);
+
+        var record = await FindUsableLicenseRecordAsync(hash, normalizedEmail, emailHash, settings, cancellationToken);
         if (!record.IsValid)
         {
             return record.Result;
@@ -82,6 +98,7 @@ public sealed class StaticLicenseClient
                 Provider = "github-pages-txt",
                 LicenseId = hash,
                 InstanceId = existingResult?.InstanceId ?? BuildInstanceId(hash, machineId),
+                CustomerEmail = normalizedEmail,
                 ProductId = "modern-yedek",
                 VariantId = durationDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 Plan = $"manual_{durationDays}d",
@@ -101,7 +118,7 @@ public sealed class StaticLicenseClient
             Provider = "github-pages-txt",
             LicenseId = hash,
             InstanceId = existingResult?.InstanceId ?? BuildInstanceId(hash, machineId),
-            CustomerEmail = string.Empty,
+            CustomerEmail = normalizedEmail,
             ProductId = "modern-yedek",
             VariantId = durationDays.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Plan = $"manual_{durationDays}d",
@@ -116,6 +133,13 @@ public sealed class StaticLicenseClient
     public static string HashLicenseKey(string licenseKey)
     {
         var normalized = NormalizeKey(licenseKey);
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
+        return Convert.ToHexString(bytes);
+    }
+
+    public static string HashEmail(string email)
+    {
+        var normalized = NormalizeEmail(email);
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
         return Convert.ToHexString(bytes);
     }
@@ -188,13 +212,19 @@ public sealed class StaticLicenseClient
                 continue;
             }
 
-            var parts = line.Split('|', 4);
+            var parts = line.Split(new[] { '|' }, 5);
             if (parts.Length < 3)
             {
                 continue;
             }
 
-            if (!int.TryParse(parts[1], out var durationDays))
+            var isEmailBound = parts.Length >= 5;
+            var emailIdentity = isEmailBound ? parts[1].Trim() : string.Empty;
+            var durationIndex = isEmailBound ? 2 : 1;
+            var statusIndex = isEmailBound ? 3 : 2;
+            var noteIndex = isEmailBound ? 4 : 3;
+
+            if (!int.TryParse(parts[durationIndex], out var durationDays))
             {
                 durationDays = 7;
             }
@@ -202,9 +232,10 @@ public sealed class StaticLicenseClient
             records.Add(new StaticLicenseRecord
             {
                 Hash = parts[0].Trim().ToUpperInvariant(),
+                EmailIdentity = emailIdentity,
                 DurationDays = durationDays,
-                Status = parts[2].Trim(),
-                Note = parts.Length >= 4 ? parts[3].Trim() : string.Empty
+                Status = parts.Length > statusIndex ? parts[statusIndex].Trim() : string.Empty,
+                Note = parts.Length > noteIndex ? parts[noteIndex].Trim() : string.Empty
             });
         }
 
@@ -213,6 +244,8 @@ public sealed class StaticLicenseClient
 
     private async Task<StaticLicenseRecordCheck> FindUsableLicenseRecordAsync(
         string hash,
+        string normalizedEmail,
+        string emailHash,
         LicenseSettings settings,
         CancellationToken cancellationToken)
     {
@@ -238,10 +271,23 @@ public sealed class StaticLicenseClient
             return StaticLicenseRecordCheck.Invalid(Invalid($"Lisans listesi kontrol edilemedi: {licensesResult.Message}", hash));
         }
 
-        var match = licensesResult.Records.FirstOrDefault(license => string.Equals(license.Hash, hash, StringComparison.OrdinalIgnoreCase));
-        if (match is null)
+        var hashMatches = licensesResult.Records
+            .Where(license => string.Equals(license.Hash, hash, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (hashMatches.Count == 0)
         {
             return StaticLicenseRecordCheck.Invalid(Invalid("Lisans listesinde bu key bulunamadi.", hash));
+        }
+
+        var match = hashMatches.FirstOrDefault(license => license.MatchesEmail(normalizedEmail, emailHash));
+        if (match is null)
+        {
+            if (hashMatches.Any(license => string.IsNullOrWhiteSpace(license.EmailIdentity)))
+            {
+                return StaticLicenseRecordCheck.Invalid(Invalid("Bu lisans kaydi eski formatta. E-posta kontrolu icin licenseHash|emailHash|gun|status|not formatina tasiyin.", hash));
+            }
+
+            return StaticLicenseRecordCheck.Invalid(Invalid("Lisans keyi bulundu ama e-posta eslesmedi.", hash));
         }
 
         if (!string.Equals(match.Status, "active", StringComparison.OrdinalIgnoreCase))
@@ -301,6 +347,13 @@ public sealed class StaticLicenseClient
         return builder.ToString();
     }
 
+    public static string NormalizeEmail(string email)
+    {
+        return string.IsNullOrWhiteSpace(email)
+            ? string.Empty
+            : email.Normalize(NormalizationForm.FormKC).Trim().ToLowerInvariant();
+    }
+
     private static bool IsDashLike(char character)
     {
         return character is '\u2010' or '\u2011' or '\u2012' or '\u2013' or '\u2014' or '\u2015' or '\u2212';
@@ -315,9 +368,21 @@ public sealed class StaticLicenseClient
     private sealed class StaticLicenseRecord
     {
         public string Hash { get; init; } = string.Empty;
+        public string EmailIdentity { get; init; } = string.Empty;
         public int DurationDays { get; init; }
         public string Status { get; init; } = string.Empty;
         public string Note { get; init; } = string.Empty;
+
+        public bool MatchesEmail(string normalizedEmail, string emailHash)
+        {
+            if (string.IsNullOrWhiteSpace(EmailIdentity))
+            {
+                return false;
+            }
+
+            return string.Equals(EmailIdentity.Trim(), emailHash, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(NormalizeEmail(EmailIdentity), normalizedEmail, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private sealed class StaticLicenseRecordCheck

@@ -36,6 +36,8 @@ public sealed class LicenseActivationSignalClient
         var payload = new Dictionary<string, string>
         {
             ["license_hash"] = signal.LicenseHash,
+            ["email"] = signal.Email,
+            ["email_hash"] = signal.EmailHash,
             ["machine_id"] = signal.MachineId,
             ["computer_name"] = signal.ComputerName,
             ["windows_user"] = signal.WindowsUser,
@@ -67,6 +69,8 @@ public sealed class LicenseActivationSignalClient
 public sealed class LicenseActivationSignal
 {
     public string LicenseHash { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+    public string EmailHash { get; init; } = string.Empty;
     public string MachineId { get; init; } = string.Empty;
     public string ComputerName { get; init; } = string.Empty;
     public string WindowsUser { get; init; } = string.Empty;

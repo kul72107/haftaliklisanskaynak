@@ -232,6 +232,11 @@
         <input id="licenseKey" autocomplete="off" spellcheck="false" placeholder="MY-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX">
       </label>
 
+      <label>
+        Musteri e-postasi
+        <input id="licenseEmail" autocomplete="off" spellcheck="false" placeholder="musteri@example.com">
+      </label>
+
       <div class="actions">
         <button type="button" id="generateKey">Key Uret</button>
         <button type="button" id="copyKey">Key Kopyala</button>
@@ -283,10 +288,16 @@
         <h2>Cikti</h2>
 
         <div class="output-title">
-          <span>SHA256 hash</span>
+          <span>Key SHA256 hash</span>
           <button type="button" id="copyHash">Kopyala</button>
         </div>
         <textarea id="hashOutput" readonly></textarea>
+
+        <div class="output-title">
+          <span>E-posta SHA256 hash</span>
+          <button type="button" id="copyEmailHash">Kopyala</button>
+        </div>
+        <textarea id="emailHashOutput" readonly></textarea>
 
         <div class="output-title">
           <span>licenses.txt satiri</span>
@@ -336,6 +347,10 @@
         .replace(/[\s\u0000-\u001F\u007F\u200B-\u200D\uFEFF]/g, "")
         .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, "-")
         .toUpperCase();
+    }
+
+    function normalizeEmail(value) {
+      return value.normalize("NFKC").trim().toLowerCase();
     }
 
     function cleanNote(value) {
@@ -418,7 +433,14 @@
         return;
       }
 
+      const email = normalizeEmail(el("licenseEmail").value);
+      if (!email) {
+        setStatus("Musteri e-postasi gerekli.", "warn");
+        return;
+      }
+
       const hash = await sha256Hex(key);
+      const emailHash = await sha256Hex(email);
       const durationMode = el("durationDays").value;
       const durationDays = durationMode === "custom"
         ? Math.max(1, Number.parseInt(el("customDurationDays").value || "1", 10))
@@ -430,9 +452,11 @@
 
       const status = el("licenseStatus").value;
       const note = cleanNote(el("licenseNote").value);
-      const line = [hash, durationDays, status, note].join("|");
+      const line = [hash, emailHash, durationDays, status, note].join("|");
       const json = {
         hash,
+        emailHash,
+        email,
         durationDays,
         status,
         note
@@ -440,6 +464,7 @@
 
       state.lastLine = line;
       el("hashOutput").value = hash;
+      el("emailHashOutput").value = emailHash;
       el("lineOutput").value = line;
       el("jsonOutput").value = JSON.stringify(json, null, 2);
       refreshFullTxt();
@@ -470,11 +495,13 @@
     el("buildEntry").addEventListener("click", buildEntry);
     el("clearForm").addEventListener("click", () => {
       el("licenseKey").value = "";
+      el("licenseEmail").value = "";
       el("licenseNote").value = "";
       el("durationDays").value = "7";
       el("customDurationDays").value = "1";
       el("customDurationWrap").style.display = "none";
       el("hashOutput").value = "";
+      el("emailHashOutput").value = "";
       el("lineOutput").value = "";
       el("jsonOutput").value = "";
       el("revokeOutput").value = "";
@@ -484,6 +511,7 @@
     });
 
     el("copyHash").addEventListener("click", () => copyText(el("hashOutput").value, "Hash"));
+    el("copyEmailHash").addEventListener("click", () => copyText(el("emailHashOutput").value, "E-posta hash"));
     el("copyLine").addEventListener("click", () => copyText(el("lineOutput").value, "TXT satiri"));
     el("copyJson").addEventListener("click", () => copyText(el("jsonOutput").value, "JSON kaydi"));
     el("copyFullTxt").addEventListener("click", () => copyText(el("fullTxtOutput").value, "Tum licenses.txt"));

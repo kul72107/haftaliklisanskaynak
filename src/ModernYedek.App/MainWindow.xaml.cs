@@ -2,7 +2,10 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Http;
+using System.Net.Mail;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -48,6 +51,9 @@ public partial class MainWindow : Window
     private DateTimeOffset _lastForegroundLicenseCheckAt = DateTimeOffset.MinValue;
     private DateTimeOffset _lastForegroundUpdateCheckAt = DateTimeOffset.MinValue;
     private string? _lastScheduleFireKey;
+    private readonly Dictionary<string, DateTimeOffset> _snoozedScheduleRuns = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _cancelledScheduleRuns = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _warnedScheduleRuns = new(StringComparer.Ordinal);
     private readonly HttpClient _httpClient;
     private readonly HttpClient _signalHttpClient;
     private CancellationTokenSource? _licenseCancellationTokenSource;
@@ -117,6 +123,18 @@ public partial class MainWindow : Window
             NormalizeLicenseSettings();
             NormalizeAppBehaviorSettings();
             BindSettings();
+            if (_settings.AppBehavior.StartWithWindows)
+            {
+                try
+                {
+                    ApplyStartupRegistration();
+                }
+                catch (Exception ex)
+                {
+                    StatusBarText.Text = $"Windows baslangic kaydi uygulanamadi: {ex.Message}";
+                }
+            }
+
             await RefreshSecretStatusAsync();
             await RefreshLicenseStatusAsync();
             await EnforceRevocationPolicyAsync(showPopup: true);
@@ -541,6 +559,7 @@ public partial class MainWindow : Window
         {
             CollectSettingsFromUi();
             await _settingsService.SaveAsync(_settings);
+            ApplyStartupRegistration();
             BindSettings();
             UpdateDashboard();
             ShowSuccess("Ayarlar kaydedildi.");
@@ -549,6 +568,32 @@ public partial class MainWindow : Window
         {
             ShowError(ex.Message, "Ayar kaydetme hatasi");
         }
+    }
+
+    private void ApplyStartupRegistration()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        const string runKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        const string valueName = "MYedek";
+        using var runKey = Registry.CurrentUser.OpenSubKey(runKeyPath, writable: true)
+            ?? Registry.CurrentUser.CreateSubKey(runKeyPath, writable: true);
+        if (runKey is null)
+        {
+            throw new InvalidOperationException("Windows baslangic registry anahtari acilamadi.");
+        }
+
+        if (_settings.AppBehavior.StartWithWindows)
+        {
+            var appPath = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "ModernYedek.App.exe");
+            runKey.SetValue(valueName, $"\"{appPath}\"", RegistryValueKind.String);
+            return;
+        }
+
+        runKey.DeleteValue(valueName, throwOnMissingValue: false);
     }
 
     private void BrowseSource_Click(object sender, RoutedEventArgs e)
@@ -819,6 +864,12 @@ public partial class MainWindow : Window
                 ShowWarning("Lisans anahtari gerekli. Size verilen keyi girip tekrar deneyin.");
                 return;
             }
+            var email = LicenseEmailBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                ShowWarning("Lisans e-postasi gerekli. Lisans alirken verdiginiz e-postayi girin.");
+                return;
+            }
 
             _licenseCancellationTokenSource?.Cancel();
             _licenseCancellationTokenSource?.Dispose();
@@ -865,6 +916,12 @@ public partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(key))
             {
                 ShowWarning("Lisans anahtari gerekli. Size verilen keyi girip tekrar deneyin.");
+                return;
+            }
+            var email = LicenseEmailBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                ShowWarning("Lisans e-postasi gerekli. Lisans alirken verdiginiz e-postayi girin.");
                 return;
             }
 
@@ -1000,6 +1057,7 @@ public partial class MainWindow : Window
         }
 
         BackupProgressWindow? progressWindow = null;
+        var shouldRestartSqlService = false;
         try
         {
             _isRunning = true;
@@ -1031,6 +1089,7 @@ public partial class MainWindow : Window
                 StatusBarText.Text = string.IsNullOrWhiteSpace(value.Message) ? value.Stage : value.Message;
                 progressWindow?.UpdateProgress(value);
             });
+            shouldRestartSqlService = await StopSqlServiceForBackupAsync(progressWindow);
             var result = await new BackupEngine(_logger).RunAsync(_settings, cloudClient, progress);
 
             DashboardStatusText.Text = result.Outcome.ToString();
@@ -1044,6 +1103,13 @@ public partial class MainWindow : Window
 
             await RefreshLogsAsync();
             UpdateDashboard();
+            if (shouldRestartSqlService)
+            {
+                await StartSqlServiceAfterBackupAsync();
+                shouldRestartSqlService = false;
+            }
+
+            var mailStatus = await TrySendBackupReportEmailAsync(result);
             CloseBackupProgressWindow(progressWindow);
             progressWindow = null;
             if (!triggeredBySchedule)
@@ -1051,13 +1117,18 @@ public partial class MainWindow : Window
                 var message = result.ArchivePath is null
                     ? $"Yedek tamamlandi: {result.Outcome}"
                     : $"Yedek tamamlandi: {result.Outcome}{Environment.NewLine}{result.ArchivePath}";
+                if (!string.IsNullOrWhiteSpace(mailStatus))
+                {
+                    message = $"{message}{Environment.NewLine}{Environment.NewLine}{mailStatus}";
+                }
+
                 if (result.Outcome == BackupOutcome.Success)
                 {
-                    ShowSuccess(message, "Yedekleme basarili");
+                    ShowBackupResult(message, "Yedekleme basarili", success: true);
                 }
                 else
                 {
-                    ShowWarning(message, "Yedekleme sonucu");
+                    ShowBackupResult(message, "Yedekleme sonucu", success: false);
                 }
             }
         }
@@ -1067,6 +1138,12 @@ public partial class MainWindow : Window
             StatusBarText.Text = ex.Message;
             CloseBackupProgressWindow(progressWindow);
             progressWindow = null;
+            if (shouldRestartSqlService)
+            {
+                await StartSqlServiceAfterBackupAsync();
+                shouldRestartSqlService = false;
+            }
+
             if (!triggeredBySchedule)
             {
                 ShowError(ex.Message, "Yedekleme hatasi");
@@ -1074,6 +1151,11 @@ public partial class MainWindow : Window
         }
         finally
         {
+            if (shouldRestartSqlService)
+            {
+                await StartSqlServiceAfterBackupAsync();
+            }
+
             CloseBackupProgressWindow(progressWindow);
             _isRunning = false;
         }
@@ -1106,6 +1188,231 @@ public partial class MainWindow : Window
 
         progressWindow.AllowClose();
         progressWindow.Close();
+    }
+
+    private async Task<bool> StopSqlServiceForBackupAsync(BackupProgressWindow? progressWindow)
+    {
+        NormalizeAppBehaviorSettings();
+        if (!_settings.SqlService.StopBeforeBackup)
+        {
+            return false;
+        }
+
+        var serviceName = _settings.SqlService.ServiceName.Trim();
+        if (string.IsNullOrWhiteSpace(serviceName))
+        {
+            throw new InvalidOperationException("SQL Server servis adi bos olamaz.");
+        }
+
+        progressWindow?.UpdateProgress(new BackupProgress
+        {
+            Stage = "SQL Server",
+            Message = $"{serviceName} servisi durduruluyor.",
+            IsIndeterminate = true
+        });
+        StatusBarText.Text = $"{serviceName} servisi durduruluyor.";
+
+        var result = await RunServiceCommandAsync("stop", serviceName);
+        if (result.ExitCode == 0)
+        {
+            StatusBarText.Text = $"{serviceName} servisi durduruldu.";
+            return _settings.SqlService.RestartAfterBackup;
+        }
+
+        if (IsServiceAlreadyStopped(result.Output))
+        {
+            StatusBarText.Text = $"{serviceName} servisi zaten durmus.";
+            return false;
+        }
+
+        throw new InvalidOperationException($"SQL Server servisi durdurulamadi:{Environment.NewLine}{result.Output}");
+    }
+
+    private async Task StartSqlServiceAfterBackupAsync()
+    {
+        if (!_settings.SqlService.RestartAfterBackup)
+        {
+            return;
+        }
+
+        var serviceName = _settings.SqlService.ServiceName.Trim();
+        if (string.IsNullOrWhiteSpace(serviceName))
+        {
+            return;
+        }
+
+        try
+        {
+            StatusBarText.Text = $"{serviceName} servisi yeniden baslatiliyor.";
+            var result = await RunServiceCommandAsync("start", serviceName);
+            if (result.ExitCode == 0 || IsServiceAlreadyRunning(result.Output))
+            {
+                StatusBarText.Text = $"{serviceName} servisi calisiyor.";
+                return;
+            }
+
+            ShowWarning($"SQL Server servisi yeniden baslatilamadi:{Environment.NewLine}{result.Output}", "SQL Server servisi");
+        }
+        catch (Exception ex)
+        {
+            ShowWarning($"SQL Server servisi yeniden baslatilamadi:{Environment.NewLine}{ex.Message}", "SQL Server servisi");
+        }
+    }
+
+    private static async Task<ServiceCommandResult> RunServiceCommandAsync(string action, string serviceName)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "sc.exe",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+        startInfo.ArgumentList.Add(action);
+        startInfo.ArgumentList.Add(serviceName);
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("sc.exe baslatilamadi.");
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        var output = string.Join(
+            Environment.NewLine,
+            new[] { await outputTask, await errorTask }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        return new ServiceCommandResult(process.ExitCode, output.Trim());
+    }
+
+    private static bool IsServiceAlreadyStopped(string output)
+    {
+        return output.Contains("1062", StringComparison.OrdinalIgnoreCase)
+            || output.Contains("has not been started", StringComparison.OrdinalIgnoreCase)
+            || output.Contains("baslatilmamis", StringComparison.OrdinalIgnoreCase)
+            || output.Contains("durdurulmus", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsServiceAlreadyRunning(string output)
+    {
+        return output.Contains("1056", StringComparison.OrdinalIgnoreCase)
+            || output.Contains("already running", StringComparison.OrdinalIgnoreCase)
+            || output.Contains("zaten calisiyor", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<string?> TrySendBackupReportEmailAsync(BackupRunResult result)
+    {
+        NormalizeAppBehaviorSettings();
+        if (!_settings.Mail.Enabled || !_settings.Mail.SendLogAfterBackup)
+        {
+            return null;
+        }
+
+        var recipients = _settings.Mail.Recipient
+            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToList();
+        if (recipients.Count == 0 || string.IsNullOrWhiteSpace(_settings.Mail.Server))
+        {
+            return "E-posta raporu gonderilemedi: alici adresi veya SMTP sunucu eksik.";
+        }
+
+        try
+        {
+            var password = await _secretStore.GetSecretAsync(SecretKeys.MailPassword);
+            if (!string.IsNullOrWhiteSpace(_settings.Mail.UserName) && string.IsNullOrWhiteSpace(password))
+            {
+                return "E-posta raporu gonderilemedi: mail parolasi Guvenlik sayfasinda kayitli degil.";
+            }
+
+            using var message = new MailMessage
+            {
+                From = new MailAddress(GetMailFromAddress(recipients[0])),
+                Subject = string.IsNullOrWhiteSpace(_settings.Mail.Subject) ? "Yedek Raporu" : _settings.Mail.Subject.Trim(),
+                Body = BuildBackupReportBody(result),
+                BodyEncoding = Encoding.UTF8,
+                SubjectEncoding = Encoding.UTF8
+            };
+            foreach (var recipient in recipients)
+            {
+                message.To.Add(recipient);
+            }
+
+            using var smtp = new SmtpClient(_settings.Mail.Server.Trim(), _settings.Mail.Port)
+            {
+                EnableSsl = _settings.Mail.UseSsl
+            };
+            if (!string.IsNullOrWhiteSpace(_settings.Mail.UserName))
+            {
+                smtp.Credentials = new NetworkCredential(_settings.Mail.UserName.Trim(), password);
+            }
+
+            await smtp.SendMailAsync(message);
+            StatusBarText.Text = "E-posta raporu gonderildi.";
+            return "E-posta raporu gonderildi.";
+        }
+        catch (Exception ex)
+        {
+            StatusBarText.Text = "E-posta raporu gonderilemedi.";
+            return $"E-posta raporu gonderilemedi: {ex.Message}";
+        }
+    }
+
+    private string GetMailFromAddress(string fallbackRecipient)
+    {
+        var userName = _settings.Mail.UserName.Trim();
+        return userName.Contains('@', StringComparison.Ordinal)
+            ? userName
+            : fallbackRecipient;
+    }
+
+    private static string BuildBackupReportBody(BackupRunResult result)
+    {
+        var body = new StringBuilder();
+        body.AppendLine("MYedek yedek raporu");
+        body.AppendLine($"Durum: {result.Outcome}");
+        body.AppendLine($"Baslangic: {result.StartedAt:yyyy-MM-dd HH:mm:ss}");
+        body.AppendLine($"Bitis: {result.FinishedAt:yyyy-MM-dd HH:mm:ss}");
+        body.AppendLine($"Eklenen dosya: {result.FilesAdded}");
+        body.AppendLine($"Atlanan dosya: {result.FilesSkipped}");
+        body.AppendLine($"Arsiv: {result.ArchivePath ?? "yok"}");
+        body.AppendLine($"SHA256: {result.Sha256 ?? "yok"}");
+        body.AppendLine($"Boyut: {FormatBytes(result.ArchiveBytes)}");
+        body.AppendLine();
+        body.AppendLine("Son log kayitlari:");
+
+        foreach (var entry in result.Entries.TakeLast(20))
+        {
+            body.AppendLine($"{entry.Timestamp:yyyy-MM-dd HH:mm:ss} [{entry.Level}] {entry.Code} - {entry.Message}");
+        }
+
+        return body.ToString();
+    }
+
+    private void ShowBackupResult(string message, string title, bool success)
+    {
+        NormalizeAppBehaviorSettings();
+        if (_settings.Warning.AutoCloseResultPopup)
+        {
+            var seconds = Math.Clamp(_settings.Warning.ResultPopupSeconds, 1, 3600);
+            StatusBarText.Text = message;
+            var window = new AutoCloseMessageWindow(title, message, seconds);
+            if (IsVisible)
+            {
+                window.Owner = this;
+            }
+
+            window.ShowDialog();
+            return;
+        }
+
+        if (success)
+        {
+            ShowSuccess(message, title);
+        }
+        else
+        {
+            ShowWarning(message, title);
+        }
     }
 
     private async Task<GoogleCloudStorageClient?> CreateCloudClientAsync()
@@ -1177,12 +1484,14 @@ public partial class MainWindow : Window
     private async Task<LicenseValidationResult> ValidateLicenseOnlineAsync(string licenseKey, CancellationToken cancellationToken = default)
     {
         var cache = await _licenseCacheService.LoadAsync(cancellationToken);
-        var existingResult = IsCachedLicenseForKey(cache, licenseKey)
+        var email = GetCurrentLicenseEmail(cache);
+        var existingResult = IsCachedLicenseForKeyAndEmail(cache, licenseKey, email)
             ? cache!.LastResult
             : null;
 
         return await new StaticLicenseClient(_httpClient).ValidateExistingAsync(
             licenseKey,
+            email,
             _settings.License,
             MachineIdentity.Current(),
             existingResult,
@@ -1192,7 +1501,8 @@ public partial class MainWindow : Window
     private async Task<LicenseValidationResult> ActivateStaticLicenseAsync(string licenseKey, CancellationToken cancellationToken = default)
     {
         var cache = await _licenseCacheService.LoadAsync(cancellationToken);
-        if (IsCachedLicenseForKey(cache, licenseKey)
+        var email = GetCurrentLicenseEmail(cache);
+        if (IsCachedLicenseForKeyAndEmail(cache, licenseKey, email)
             && !LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
         {
             var paidUntil = cache!.LastResult.PaidUntil ?? cache.LastResult.OfflineUntil;
@@ -1219,7 +1529,7 @@ public partial class MainWindow : Window
             }
         }
 
-        if (IsCachedLicenseUsableForKey(cache, licenseKey))
+        if (IsCachedLicenseUsableForKeyAndEmail(cache, licenseKey, email))
         {
             if (!await EnsureCachedLicenseStillAuthorizedAsync(cache!, showPopup: false, cancellationToken))
             {
@@ -1247,7 +1557,7 @@ public partial class MainWindow : Window
         }
 
         var client = new StaticLicenseClient(_httpClient);
-        var result = await client.ActivateAsync(licenseKey, _settings.License, MachineIdentity.Current(), cancellationToken);
+        var result = await client.ActivateAsync(licenseKey, email, _settings.License, MachineIdentity.Current(), cancellationToken);
         if (result.IsValid)
         {
             _ = Task.Run(async () => await TrySendActivationSignalAsync(result).ConfigureAwait(false), cancellationToken);
@@ -1268,6 +1578,8 @@ public partial class MainWindow : Window
             var signal = new LicenseActivationSignal
             {
                 LicenseHash = result.LicenseId,
+                Email = result.CustomerEmail,
+                EmailHash = StaticLicenseClient.HashEmail(result.CustomerEmail),
                 MachineId = MachineIdentity.Current(),
                 ComputerName = Environment.MachineName,
                 WindowsUser = Environment.UserName,
@@ -1315,20 +1627,32 @@ public partial class MainWindow : Window
         }
     }
 
-    private static bool IsCachedLicenseUsableForKey(LicenseCache? cache, string licenseKey)
+    private static bool IsCachedLicenseUsableForKeyAndEmail(LicenseCache? cache, string licenseKey, string email)
     {
         if (!LicenseCacheService.CanUseOffline(cache, DateTimeOffset.UtcNow))
         {
             return false;
         }
 
-        return IsCachedLicenseForKey(cache, licenseKey);
+        return IsCachedLicenseForKeyAndEmail(cache, licenseKey, email);
     }
 
-    private static bool IsCachedLicenseForKey(LicenseCache? cache, string licenseKey)
+    private static bool IsCachedLicenseForKeyAndEmail(LicenseCache? cache, string licenseKey, string email)
     {
         return cache is not null
-            && string.Equals(cache.LicenseKey.Trim(), licenseKey.Trim(), StringComparison.OrdinalIgnoreCase);
+            && string.Equals(cache.LicenseKey.Trim(), licenseKey.Trim(), StringComparison.OrdinalIgnoreCase)
+            && string.Equals(StaticLicenseClient.NormalizeEmail(cache.Email), StaticLicenseClient.NormalizeEmail(email), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string GetCurrentLicenseEmail(LicenseCache? cache = null)
+    {
+        var email = StaticLicenseClient.NormalizeEmail(_settings.License.Email);
+        if (string.IsNullOrWhiteSpace(email) && cache is not null)
+        {
+            email = StaticLicenseClient.NormalizeEmail(cache.Email);
+        }
+
+        return email;
     }
 
     private async Task EnforceRevocationPolicyAsync(bool showPopup)
@@ -1357,6 +1681,7 @@ public partial class MainWindow : Window
         {
             var result = await new StaticLicenseClient(_httpClient).ValidateExistingAsync(
                 cache.LicenseKey,
+                GetCurrentLicenseEmail(cache),
                 _settings.License,
                 MachineIdentity.Current(),
                 cache.LastResult,
@@ -1411,7 +1736,14 @@ public partial class MainWindow : Window
     private async Task SaveLicenseResultAsync(string licenseKey, LicenseValidationResult result)
     {
         var existing = await _licenseCacheService.LoadAsync();
-        var hadSameCachedLicense = IsCachedLicenseForKey(existing, licenseKey);
+        var email = StaticLicenseClient.NormalizeEmail(result.CustomerEmail);
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            email = GetCurrentLicenseEmail(existing);
+        }
+        _settings.License.Email = email;
+
+        var hadSameCachedLicense = IsCachedLicenseForKeyAndEmail(existing, licenseKey, email);
 
         if (!result.IsValid)
         {
@@ -1445,7 +1777,7 @@ public partial class MainWindow : Window
         await _licenseCacheService.SaveAsync(new LicenseCache
         {
             LicenseKey = licenseKey,
-            Email = _settings.License.Email,
+            Email = email,
             ApiBaseUrl = _settings.License.ApiBaseUrl,
             LicenseListUrl = _settings.License.LicenseListUrl,
             RevokedListUrl = _settings.License.RevokedListUrl,
@@ -1490,13 +1822,20 @@ public partial class MainWindow : Window
             _settings.License.RevokedListUrl = cache.RevokedListUrl;
         }
 
+        if (string.IsNullOrWhiteSpace(_settings.License.Email))
+        {
+            _settings.License.Email = StaticLicenseClient.NormalizeEmail(cache.Email);
+        }
+
         LicenseKeyBox.Text = cache.LicenseKey;
+        LicenseEmailBox.Text = _settings.License.Email;
         UpdateLicenseUi(cache.LastResult);
     }
 
     private void ClearLocalLicenseUi(string detail)
     {
         LicenseKeyBox.Clear();
+        LicenseEmailBox.Clear();
         LicenseStateText.Text = "Lisans yok";
         LicenseDetailText.Text = detail;
         DashboardStatusText.Text = "Lisans gerekli";
@@ -1515,8 +1854,10 @@ public partial class MainWindow : Window
 
         var paidUntil = result.PaidUntil?.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) ?? "-";
         var offlineUntil = result.OfflineUntil?.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) ?? "-";
+        var customerEmail = string.IsNullOrWhiteSpace(result.CustomerEmail) ? "-" : result.CustomerEmail;
         LicenseDetailText.Text =
             $"{result.Message}{Environment.NewLine}" +
+            $"E-posta: {customerEmail}{Environment.NewLine}" +
             $"Saglayici: {result.Provider}{Environment.NewLine}" +
             $"Plan: {result.Plan}{Environment.NewLine}" +
             $"Odeme bitis: {paidUntil}{Environment.NewLine}" +
@@ -1599,13 +1940,26 @@ public partial class MainWindow : Window
 
     private async void SchedulerTimer_Tick(object? sender, EventArgs e)
     {
-        if (_isRunning || !_settings.Schedule.Enabled)
+        if (_isRunning)
         {
             return;
         }
 
+        NormalizeAppBehaviorSettings();
         var now = DateTimeOffset.Now;
-        if (!_settings.Schedule.Days.Contains(now.DayOfWeek))
+
+        if (_settings.OneTimeSchedule.Enabled && _settings.OneTimeSchedule.RunAt is { } oneTimeRunAt)
+        {
+            var dueAt = oneTimeRunAt.ToLocalTime();
+            var runKey = $"once:{dueAt:yyyyMMdd-HHmm}";
+            if (_lastScheduleFireKey != runKey && ShouldRunScheduledBackup(runKey, dueAt, now))
+            {
+                await RunScheduledBackupAsync(runKey, disableOneTimeAfterRun: true);
+                return;
+            }
+        }
+
+        if (!_settings.Schedule.Enabled || !_settings.Schedule.Days.Contains(now.DayOfWeek))
         {
             return;
         }
@@ -1617,21 +1971,104 @@ public partial class MainWindow : Window
                 continue;
             }
 
-            if (now.Hour != time.Hour || now.Minute != time.Minute)
+            var localDue = now.Date.Add(time.ToTimeSpan());
+            var dueAt = new DateTimeOffset(localDue, TimeZoneInfo.Local.GetUtcOffset(localDue));
+            var fireKey = $"schedule:{dueAt:yyyyMMdd-HHmm}";
+            if (_lastScheduleFireKey == fireKey || !ShouldRunScheduledBackup(fireKey, dueAt, now))
             {
                 continue;
             }
 
-            var fireKey = $"{now:yyyyMMdd}-{value}";
-            if (_lastScheduleFireKey == fireKey)
-            {
-                return;
-            }
-
-            _lastScheduleFireKey = fireKey;
-            await RunBackupAsync(triggeredBySchedule: true);
+            await RunScheduledBackupAsync(fireKey, disableOneTimeAfterRun: false);
             return;
         }
+    }
+
+    private bool ShouldRunScheduledBackup(string runKey, DateTimeOffset dueAt, DateTimeOffset now)
+    {
+        if (_cancelledScheduleRuns.Contains(runKey))
+        {
+            return false;
+        }
+
+        if (_snoozedScheduleRuns.TryGetValue(runKey, out var snoozedDueAt))
+        {
+            return IsWithinDueWindow(now, snoozedDueAt);
+        }
+
+        if (IsWithinDueWindow(now, dueAt))
+        {
+            return true;
+        }
+
+        if (!_settings.Warning.Enabled)
+        {
+            return false;
+        }
+
+        var minutesBefore = Math.Clamp(_settings.Warning.MinutesBefore, 1, 1440);
+        var warningAt = dueAt.AddMinutes(-minutesBefore);
+        var warningKey = $"{runKey}|{dueAt:O}";
+        if (now < warningAt || now >= dueAt || !_warnedScheduleRuns.Add(warningKey))
+        {
+            return false;
+        }
+
+        EnsureScheduledPromptVisible();
+        var window = new BackupWarningWindow(dueAt, Math.Clamp(_settings.Warning.SnoozeMinutes, 1, 1440));
+        if (IsVisible)
+        {
+            window.Owner = this;
+        }
+
+        window.ShowDialog();
+        switch (window.Choice)
+        {
+            case BackupWarningChoice.StartNow:
+                return true;
+            case BackupWarningChoice.Snooze:
+                _snoozedScheduleRuns[runKey] = DateTimeOffset.Now.AddMinutes(Math.Clamp(_settings.Warning.SnoozeMinutes, 1, 1440));
+                return false;
+            default:
+                _cancelledScheduleRuns.Add(runKey);
+                return false;
+        }
+    }
+
+    private async Task RunScheduledBackupAsync(string runKey, bool disableOneTimeAfterRun)
+    {
+        _lastScheduleFireKey = runKey;
+        _snoozedScheduleRuns.Remove(runKey);
+        await RunBackupAsync(triggeredBySchedule: true);
+
+        if (disableOneTimeAfterRun)
+        {
+            _settings.OneTimeSchedule.Enabled = false;
+            await _settingsService.SaveAsync(_settings);
+            BindSettings();
+            UpdateDashboard();
+        }
+    }
+
+    private static bool IsWithinDueWindow(DateTimeOffset now, DateTimeOffset dueAt)
+    {
+        return now >= dueAt && now <= dueAt.AddMinutes(1);
+    }
+
+    private void EnsureScheduledPromptVisible()
+    {
+        if (!IsVisible)
+        {
+            Show();
+            EnsureStandardWindowChrome(visibleInTaskbar: true);
+        }
+
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        Activate();
     }
 
     private void BindSettings()
@@ -1640,6 +2077,10 @@ public partial class MainWindow : Window
         ProfileNameBox.Text = _settings.ProfileName;
         ZipEnabledCheck.IsChecked = _settings.ZipEnabled;
         MinimizeToTrayOnCloseCheck.IsChecked = _settings.AppBehavior.MinimizeToTrayOnClose;
+        StartWithWindowsCheck.IsChecked = _settings.AppBehavior.StartWithWindows;
+        AutoCloseResultPopupCheck.IsChecked = _settings.Warning.AutoCloseResultPopup;
+        ResultPopupSecondsBox.Text = _settings.Warning.ResultPopupSeconds.ToString(CultureInfo.InvariantCulture);
+        LicenseEmailBox.Text = _settings.License.Email;
 
         SourcesList.ItemsSource = _settings.Sources.Select(FormatSource).ToList();
         TargetsList.ItemsSource = _settings.Targets.Select(target => target.Path).ToList();
@@ -1659,12 +2100,31 @@ public partial class MainWindow : Window
         DaySaturdayCheck.IsChecked = _settings.Schedule.Days.Contains(DayOfWeek.Saturday);
         DaySundayCheck.IsChecked = _settings.Schedule.Days.Contains(DayOfWeek.Sunday);
         ScheduleTimesList.ItemsSource = _settings.Schedule.Times.ToList();
+        WarningEnabledCheck.IsChecked = _settings.Warning.Enabled;
+        WarningMinutesBox.Text = _settings.Warning.MinutesBefore.ToString(CultureInfo.InvariantCulture);
+        SnoozeMinutesBox.Text = _settings.Warning.SnoozeMinutes.ToString(CultureInfo.InvariantCulture);
+        OneTimeEnabledCheck.IsChecked = _settings.OneTimeSchedule.Enabled;
+        OneTimeDatePicker.SelectedDate = _settings.OneTimeSchedule.RunAt?.LocalDateTime.Date ?? DateTime.Today;
+        OneTimeTimeBox.Text = _settings.OneTimeSchedule.RunAt?.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture) ?? "18:00";
 
         CloudEnabledCheck.IsChecked = _settings.Cloud.Enabled;
         UploadAfterBackupCheck.IsChecked = _settings.Cloud.UploadAfterBackup;
         DeleteLocalAfterUploadCheck.IsChecked = _settings.Cloud.DeleteLocalAfterUpload;
         BucketBox.Text = _settings.Cloud.BucketName;
         PrefixBox.Text = _settings.Cloud.ObjectPrefix;
+
+        MailEnabledCheck.IsChecked = _settings.Mail.Enabled;
+        SendLogAfterBackupCheck.IsChecked = _settings.Mail.SendLogAfterBackup;
+        MailRecipientBox.Text = _settings.Mail.Recipient;
+        MailSubjectBox.Text = _settings.Mail.Subject;
+        MailServerBox.Text = _settings.Mail.Server;
+        MailPortBox.Text = _settings.Mail.Port.ToString(CultureInfo.InvariantCulture);
+        MailUserNameBox.Text = _settings.Mail.UserName;
+        MailUseSslCheck.IsChecked = _settings.Mail.UseSsl;
+
+        SqlStopBeforeBackupCheck.IsChecked = _settings.SqlService.StopBeforeBackup;
+        SqlRestartAfterBackupCheck.IsChecked = _settings.SqlService.RestartAfterBackup;
+        SqlServiceNameBox.Text = _settings.SqlService.ServiceName;
     }
 
     private void CollectSettingsFromUi()
@@ -1673,6 +2133,10 @@ public partial class MainWindow : Window
         _settings.ProfileName = string.IsNullOrWhiteSpace(ProfileNameBox.Text) ? "Datasoft Yedek" : ProfileNameBox.Text.Trim();
         _settings.ZipEnabled = ZipEnabledCheck.IsChecked == true;
         _settings.AppBehavior.MinimizeToTrayOnClose = MinimizeToTrayOnCloseCheck.IsChecked == true;
+        _settings.AppBehavior.StartWithWindows = StartWithWindowsCheck.IsChecked == true;
+        _settings.License.Email = StaticLicenseClient.NormalizeEmail(LicenseEmailBox.Text);
+        _settings.Warning.AutoCloseResultPopup = AutoCloseResultPopupCheck.IsChecked == true;
+        _settings.Warning.ResultPopupSeconds = ReadBoundedInt(ResultPopupSecondsBox, 10, 1, 3600);
 
         _settings.Retention.Enabled = RetentionEnabledCheck.IsChecked == true;
         _settings.Retention.KeepDays = int.TryParse(KeepDaysBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var keepDays)
@@ -1684,12 +2148,30 @@ public partial class MainWindow : Window
 
         _settings.Schedule.Enabled = ScheduleEnabledCheck.IsChecked == true;
         _settings.Schedule.Days = ReadSelectedDays();
+        _settings.Warning.Enabled = WarningEnabledCheck.IsChecked == true;
+        _settings.Warning.MinutesBefore = ReadBoundedInt(WarningMinutesBox, 1, 1, 1440);
+        _settings.Warning.SnoozeMinutes = ReadBoundedInt(SnoozeMinutesBox, 5, 1, 1440);
+        _settings.OneTimeSchedule.Enabled = OneTimeEnabledCheck.IsChecked == true;
+        _settings.OneTimeSchedule.RunAt = ReadOneTimeRunAt();
 
         _settings.Cloud.Enabled = CloudEnabledCheck.IsChecked == true;
         _settings.Cloud.UploadAfterBackup = UploadAfterBackupCheck.IsChecked == true;
         _settings.Cloud.DeleteLocalAfterUpload = DeleteLocalAfterUploadCheck.IsChecked == true;
         _settings.Cloud.BucketName = BucketBox.Text.Trim();
         _settings.Cloud.ObjectPrefix = PrefixBox.Text.Trim();
+
+        _settings.Mail.Enabled = MailEnabledCheck.IsChecked == true;
+        _settings.Mail.SendLogAfterBackup = SendLogAfterBackupCheck.IsChecked == true;
+        _settings.Mail.Recipient = MailRecipientBox.Text.Trim();
+        _settings.Mail.Subject = string.IsNullOrWhiteSpace(MailSubjectBox.Text) ? "Yedek Raporu" : MailSubjectBox.Text.Trim();
+        _settings.Mail.Server = MailServerBox.Text.Trim();
+        _settings.Mail.Port = ReadBoundedInt(MailPortBox, 587, 1, 65535);
+        _settings.Mail.UserName = MailUserNameBox.Text.Trim();
+        _settings.Mail.UseSsl = MailUseSslCheck.IsChecked == true;
+
+        _settings.SqlService.StopBeforeBackup = SqlStopBeforeBackupCheck.IsChecked == true;
+        _settings.SqlService.RestartAfterBackup = SqlRestartAfterBackupCheck.IsChecked == true;
+        _settings.SqlService.ServiceName = string.IsNullOrWhiteSpace(SqlServiceNameBox.Text) ? "MSSQLSERVER" : SqlServiceNameBox.Text.Trim();
 
         _settings.License.Required = true;
         NormalizeLicenseSettings();
@@ -1707,6 +2189,31 @@ public partial class MainWindow : Window
         if (DaySaturdayCheck.IsChecked == true) days.Add(DayOfWeek.Saturday);
         if (DaySundayCheck.IsChecked == true) days.Add(DayOfWeek.Sunday);
         return days;
+    }
+
+    private static int ReadBoundedInt(System.Windows.Controls.TextBox textBox, int defaultValue, int minValue, int maxValue)
+    {
+        return int.TryParse(textBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
+            ? Math.Clamp(value, minValue, maxValue)
+            : defaultValue;
+    }
+
+    private DateTimeOffset? ReadOneTimeRunAt()
+    {
+        var date = OneTimeDatePicker.SelectedDate ?? DateTime.Today;
+        var timeText = string.IsNullOrWhiteSpace(OneTimeTimeBox.Text) ? "18:00" : OneTimeTimeBox.Text.Trim();
+        if (!TimeOnly.TryParseExact(timeText, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time))
+        {
+            if (OneTimeEnabledCheck.IsChecked != true)
+            {
+                return _settings.OneTimeSchedule.RunAt;
+            }
+
+            throw new InvalidOperationException("Tek seferlik yedek saati HH:mm formatinda olmali. Ornek: 18:00");
+        }
+
+        var localDateTime = date.Date.Add(time.ToTimeSpan());
+        return new DateTimeOffset(localDateTime, TimeZoneInfo.Local.GetUtcOffset(localDateTime));
     }
 
     private async Task RefreshSecretStatusAsync()
@@ -1730,7 +2237,16 @@ public partial class MainWindow : Window
 
     private void UpdateDashboard()
     {
-        var next = ScheduleCalculator.NextRun(_settings.Schedule, DateTimeOffset.Now);
+        NormalizeAppBehaviorSettings();
+        var now = DateTimeOffset.Now;
+        var next = ScheduleCalculator.NextRun(_settings.Schedule, now);
+        if (_settings.OneTimeSchedule.Enabled
+            && _settings.OneTimeSchedule.RunAt is { } oneTimeRunAt
+            && oneTimeRunAt > now
+            && (next is null || oneTimeRunAt < next))
+        {
+            next = oneTimeRunAt;
+        }
         NextRunText.Text = next?.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) ?? "Kapalı";
 
         CloudStateText.Text = _settings.Cloud.Enabled
@@ -1753,7 +2269,6 @@ public partial class MainWindow : Window
             _settings.License.ApiBaseUrl = LicenseSettings.DefaultApiBaseUrl;
         }
 
-        _settings.License.Email = string.Empty;
         if (string.IsNullOrWhiteSpace(_settings.License.LicenseListUrl))
         {
             _settings.License.LicenseListUrl = LicenseSettings.DefaultLicenseListUrl;
@@ -1936,6 +2451,31 @@ public partial class MainWindow : Window
     private void NormalizeAppBehaviorSettings()
     {
         _settings.AppBehavior ??= new AppBehaviorSettings();
+        _settings.Schedule ??= new ScheduleSettings();
+        _settings.OneTimeSchedule ??= new OneTimeScheduleSettings();
+        _settings.Warning ??= new BackupWarningSettings();
+        _settings.SqlService ??= new SqlServiceSettings();
+        _settings.Retention ??= new RetentionSettings();
+        _settings.Cloud ??= new CloudSettings();
+        _settings.Mail ??= new MailSettings();
+        _settings.License ??= new LicenseSettings();
+        _settings.Update ??= new UpdateSettings();
+        _settings.Sources ??= [];
+        _settings.Targets ??= [];
+
+        _settings.Warning.MinutesBefore = Math.Clamp(_settings.Warning.MinutesBefore <= 0 ? 1 : _settings.Warning.MinutesBefore, 1, 1440);
+        _settings.Warning.SnoozeMinutes = Math.Clamp(_settings.Warning.SnoozeMinutes <= 0 ? 5 : _settings.Warning.SnoozeMinutes, 1, 1440);
+        _settings.Warning.ResultPopupSeconds = Math.Clamp(_settings.Warning.ResultPopupSeconds <= 0 ? 10 : _settings.Warning.ResultPopupSeconds, 1, 3600);
+        _settings.Mail.Port = Math.Clamp(_settings.Mail.Port <= 0 ? 587 : _settings.Mail.Port, 1, 65535);
+        if (string.IsNullOrWhiteSpace(_settings.Mail.Subject))
+        {
+            _settings.Mail.Subject = "Yedek Raporu";
+        }
+
+        if (string.IsNullOrWhiteSpace(_settings.SqlService.ServiceName))
+        {
+            _settings.SqlService.ServiceName = "MSSQLSERVER";
+        }
     }
 
     private static Version GetCurrentVersion()
@@ -1995,6 +2535,8 @@ public partial class MainWindow : Window
 
         return $"{bytes / 1024d:N2} KB";
     }
+
+    private sealed record ServiceCommandResult(int ExitCode, string Output);
 
     private sealed record LogListItem(BackupLogEntry Entry)
     {

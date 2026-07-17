@@ -21,6 +21,21 @@ public sealed class LegacyIniImporter
             Sources = ReadSources(ini),
             Targets = ReadTargets(ini),
             Schedule = ReadSchedule(ini),
+            OneTimeSchedule = ReadOneTimeSchedule(ini),
+            Warning = new BackupWarningSettings
+            {
+                Enabled = ReadBool(ini, "DURUM", "UYARI", defaultValue: false),
+                MinutesBefore = Math.Max(1, ReadInt(ini, "DURUM", "UYARIDK", 1)),
+                SnoozeMinutes = 5,
+                AutoCloseResultPopup = ReadBool(ini, "DURUM", "UYARIKAPAT", defaultValue: false),
+                ResultPopupSeconds = 10
+            },
+            SqlService = new SqlServiceSettings
+            {
+                StopBeforeBackup = ReadBool(ini, "DURUM", "SERVER", defaultValue: false),
+                ServiceName = "MSSQLSERVER",
+                RestartAfterBackup = true
+            },
             Retention = new RetentionSettings
             {
                 Enabled = true,
@@ -34,8 +49,12 @@ public sealed class LegacyIniImporter
             },
             Mail = new MailSettings
             {
+                Enabled = ReadBool(ini, "DURUM", "MAILMI", defaultValue: false),
+                SendLogAfterBackup = ReadBool(ini, "DURUM", "MAILMI", defaultValue: false),
                 Recipient = ReadValue(ini, "MAIL", "ADRES") ?? string.Empty,
                 Server = ReadValue(ini, "MAIL", "SUNUCU") ?? string.Empty,
+                Port = 587,
+                UseSsl = true,
                 UserName = ReadValue(ini, "MAIL", "USER") ?? string.Empty,
                 Subject = ReadValue(ini, "MAIL", "SUBJECT") ?? "Yedek Raporu"
             }
@@ -45,6 +64,14 @@ public sealed class LegacyIniImporter
         {
             Settings = settings,
             MailPassword = ReadValue(ini, "MAIL", "PASS")
+        };
+    }
+
+    private static OneTimeScheduleSettings ReadOneTimeSchedule(Dictionary<string, Dictionary<string, string>> ini)
+    {
+        return new OneTimeScheduleSettings
+        {
+            Enabled = ReadBool(ini, "DURUM", "TEK", defaultValue: false)
         };
     }
 

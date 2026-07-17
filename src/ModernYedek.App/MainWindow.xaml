@@ -474,6 +474,40 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
+
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Otomatik yedek başlamadan önce kullanıcıya haber verir ve gerekirse erteleme sunar.">
+                            <StackPanel>
+                                <TextBlock Text="Yedek öncesi uyarı" FontSize="18" FontWeight="SemiBold" ToolTip="Planlı yedek başlamadan önce uyarı penceresi gösterir."/>
+                                <CheckBox x:Name="WarningEnabledCheck" Content="Yedek başlamadan önce uyarı göster" Margin="0,14,0,10" ToolTip="Açık olursa planlı yedeklerden önce erteleme, iptal veya hemen başlatma seçenekleri çıkar."/>
+                                <UniformGrid Columns="2">
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="Kaç dakika önce" Foreground="{StaticResource Muted}" ToolTip="Yedekten kaç dakika önce uyarı gösterileceği."/>
+                                        <TextBox x:Name="WarningMinutesBox" Text="1" ToolTip="Örnek: 1 veya 5"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Erteleme dakikası" Foreground="{StaticResource Muted}" ToolTip="Ertele seçilirse yedeğin kaç dakika sonraya alınacağı."/>
+                                        <TextBox x:Name="SnoozeMinutesBox" Text="5" ToolTip="Örnek: 5"/>
+                                    </StackPanel>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Tek bir tarih ve saatte sadece bir defa yedek çalıştırır.">
+                            <StackPanel>
+                                <TextBlock Text="Tek seferlik yedek" FontSize="18" FontWeight="SemiBold" ToolTip="Seçilen tarih ve saatte tek defalık yedek çalıştırır."/>
+                                <CheckBox x:Name="OneTimeEnabledCheck" Content="Tek seferlik yedek aktif" Margin="0,14,0,10" ToolTip="Açık olursa aşağıdaki tarih ve saatte bir kez yedek alınır; çalıştıktan sonra otomatik kapanır."/>
+                                <UniformGrid Columns="2">
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="Tarih" Foreground="{StaticResource Muted}" ToolTip="Tek seferlik yedeğin çalışacağı tarih."/>
+                                        <DatePicker x:Name="OneTimeDatePicker" ToolTip="Tek seferlik yedeğin çalışacağı tarihi seçin."/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Saat" Foreground="{StaticResource Muted}" ToolTip="Tek seferlik yedeğin çalışacağı saat."/>
+                                        <TextBox x:Name="OneTimeTimeBox" Text="18:00" ToolTip="Saat HH:mm formatında olmalı. Örnek: 18:00"/>
+                                    </StackPanel>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <StackPanel x:Name="CloudPanel" Visibility="Collapsed">
@@ -493,6 +527,8 @@
                                         <TextBox x:Name="PrefixBox" Text="yedekler" ToolTip="Buluttaki klasör ön ekidir. Örnek: yedekler veya ofis1/yedekler"/>
                                     </StackPanel>
                                 </UniformGrid>
+                                <TextBlock Text="Lisans e-postasi" Foreground="{StaticResource Muted}" Margin="0,12,0,0" ToolTip="Lisans alirken verdiginiz e-posta adresi."/>
+                                <TextBox x:Name="LicenseEmailBox" ToolTip="Lisans alirken verdiginiz e-posta adresini yazin. Key ile birlikte kontrol edilir."/>
                                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                                     <Button Content="Service Account JSON İçe Aktar" Style="{StaticResource SecondaryButtonStyle}" Click="ImportGoogleKey_Click" ToolTip="Google Cloud service account JSON dosyasını seçer ve içeriğini şifreli secret dosyasına kaydeder."/>
                                     <Button Content="Bağlantıyı Test Et" Style="{StaticResource PrimaryButtonStyle}" Click="TestCloud_Click" ToolTip="Bucket adı ve service account key ile Google Cloud bağlantısının çalışıp çalışmadığını kontrol eder."/>
@@ -533,6 +569,7 @@
                                 <TextBlock Text="Lisans" FontSize="18" FontWeight="SemiBold" ToolTip="Uygulamanın çalışması için kullanılan lisans bilgileri."/>
                                 <TextBlock Text="Size verilen manuel lisans anahtarini girin. Key ilk aktivasyonda bu bilgisayara baglanir ve sure o anda baslar." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,16" ToolTip="Key ilk kullanıldığı bilgisayara bağlanır. Süre ilk aktivasyonda başlar."/>
                                 <TextBlock Text="Lisans zorunludur. Geçerli lisans yokken yedekleme başlatılamaz." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,12" ToolTip="Bu güvenlik ayarı kullanıcı tarafından kapatılamaz; geçerli lisans olmadan uygulama yedekleme çalıştırmaz."/>
+                                <TextBlock Text="Yeni sistemde lisans keyi ve e-posta birlikte kontrol edilir." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" ToolTip="GitHub lisans listesindeki key hash ve e-posta hash birlikte eslesmelidir."/>
                                 <TextBlock Text="Lisans anahtari" Foreground="{StaticResource Muted}" Margin="0,4,0,0" ToolTip="Size verilen manuel lisans key'i."/>
                                 <TextBox x:Name="LicenseKeyBox" ToolTip="Size verilen lisans anahtarını buraya yapıştırın. Örnek: MY-...."/>
                                 <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
@@ -587,6 +624,12 @@
                                 <TextBox x:Name="ProfileNameBox" ToolTip="Yedek profilinin adını yazın. Bu ad loglarda ve bulut metadata bilgisinde kullanılabilir."/>
                                 <CheckBox x:Name="ZipEnabledCheck" Content="ZIP formatında yedekle" Margin="0,14,0,8" ToolTip="Açık olursa kaynaklar tek bir ZIP arşivi olarak yedeklenir."/>
                                 <CheckBox x:Name="MinimizeToTrayOnCloseCheck" Content="Kapatınca veya küçültünce sağ alta al ve arka planda çalıştır" Margin="0,0,0,8" ToolTip="Açık olursa pencere kapatıldığında veya küçültüldüğünde uygulama kapanmaz; sağ alttaki sistem tepsisi simgesinden tekrar açılır. Varsayılan olarak açıktır."/>
+                                <CheckBox x:Name="StartWithWindowsCheck" Content="Windows başlangıcında MYedek'i çalıştır" Margin="0,0,0,8" ToolTip="Açık olursa Windows oturumunuz açıldığında MYedek otomatik başlar."/>
+                                <CheckBox x:Name="AutoCloseResultPopupCheck" Content="Yedek sonucunu gösteren pencereyi otomatik kapat" Margin="0,0,0,8" ToolTip="Açık olursa yedekleme sonucunu gösteren pencere belirlenen süre sonunda kapanır."/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <TextBlock Text="Sonuç penceresi süresi (sn)" VerticalAlignment="Center" Foreground="{StaticResource Muted}" Margin="0,0,8,0" ToolTip="Otomatik kapanma açıkken sonuç penceresinin kaç saniye açık kalacağı."/>
+                                    <TextBox x:Name="ResultPopupSecondsBox" Width="80" Text="10" ToolTip="Örnek: 10"/>
+                                </StackPanel>
                                 <TextBlock Text="Eski yedekaldat.ini yolu" Foreground="{StaticResource Muted}" Margin="0,10,0,0" ToolTip="Eski Delphi uygulamasının ini dosyasını içe aktarmak için dosya yolu."/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -611,6 +654,58 @@
                                         </StackPanel>
                                     </Grid>
                                 </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Yedek tamamlandığında e-posta raporu göndermek için kullanılır.">
+                            <StackPanel>
+                                <TextBlock Text="E-posta raporu" FontSize="18" FontWeight="SemiBold" ToolTip="Yedekleme sonucu ve log özetini mail olarak gönderir."/>
+                                <CheckBox x:Name="MailEnabledCheck" Content="E-posta ayarları aktif" Margin="0,14,0,8" ToolTip="Açık olursa mail sunucusu bilgileri kullanılır."/>
+                                <CheckBox x:Name="SendLogAfterBackupCheck" Content="Yedekten sonra log raporunu mail gönder" Margin="0,0,0,12" ToolTip="Açık olursa yedekleme tamamlandığında sonuç özeti alıcı adrese gönderilir."/>
+                                <UniformGrid Columns="2">
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="Alıcı mail adresi" Foreground="{StaticResource Muted}" ToolTip="Yedek raporunun gönderileceği adres."/>
+                                        <TextBox x:Name="MailRecipientBox" ToolTip="Örnek: muhasebe@sirket.com"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Mail başlığı" Foreground="{StaticResource Muted}" ToolTip="Gönderilecek rapor mailinin başlığı."/>
+                                        <TextBox x:Name="MailSubjectBox" Text="Yedek Raporu" ToolTip="Örnek: Günlük Yedek Raporu"/>
+                                    </StackPanel>
+                                </UniformGrid>
+                                <UniformGrid Columns="3" Margin="0,12,0,0">
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="SMTP sunucu" Foreground="{StaticResource Muted}" ToolTip="Mail sunucusunun adresi."/>
+                                        <TextBox x:Name="MailServerBox" ToolTip="Örnek: smtp.gmail.com"/>
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="Port" Foreground="{StaticResource Muted}" ToolTip="SMTP port numarası."/>
+                                        <TextBox x:Name="MailPortBox" Text="587" ToolTip="Genellikle 587 veya 465 kullanılır."/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Kullanıcı adı" Foreground="{StaticResource Muted}" ToolTip="SMTP kullanıcı adı."/>
+                                        <TextBox x:Name="MailUserNameBox" ToolTip="Mail sunucusu kullanıcı adı."/>
+                                    </StackPanel>
+                                </UniformGrid>
+                                <CheckBox x:Name="MailUseSslCheck" Content="SSL/TLS kullan" Margin="0,12,0,0" ToolTip="Çoğu SMTP sunucusu için açık olmalıdır."/>
+                                <TextBlock Text="Mail parolası Güvenlik sayfasındaki şifreli secret alanından kaydedilir." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0" ToolTip="Parola düz metin ayar dosyasına yazılmaz."/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardStyle}" ToolTip="Yedekleme öncesi ve sonrası SQL Server servis işlemlerini yönetir.">
+                            <StackPanel>
+                                <TextBlock Text="SQL Server servis kontrolü" FontSize="18" FontWeight="SemiBold" ToolTip="Gerekirse yedekten önce SQL Server servisini durdurur ve bitince tekrar başlatır."/>
+                                <CheckBox x:Name="SqlStopBeforeBackupCheck" Content="Yedekten önce SQL Server servisini durdur" Margin="0,14,0,8" ToolTip="Açık olursa yedek başlamadan önce belirtilen Windows servisi durdurulur. Yönetici yetkisi gerekebilir."/>
+                                <CheckBox x:Name="SqlRestartAfterBackupCheck" Content="Yedekten sonra servisi tekrar başlat" Margin="0,0,0,12" ToolTip="Açık olursa durdurulan servis yedekten sonra tekrar başlatılır."/>
+                                <UniformGrid Columns="2">
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="Servis adı" Foreground="{StaticResource Muted}" ToolTip="Windows servis adı. Varsayılan SQL Server servisi MSSQLSERVER'dır."/>
+                                        <TextBox x:Name="SqlServiceNameBox" Text="MSSQLSERVER" ToolTip="Örnek: MSSQLSERVER veya MSSQL$SQLEXPRESS"/>
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="Not" Foreground="{StaticResource Muted}"/>
+                                        <TextBlock Text="Servisi durdurmak için uygulamanın yönetici yetkisiyle çalışması gerekebilir." Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </UniformGrid>
                             </StackPanel>
                         </Border>
                     </StackPanel>
