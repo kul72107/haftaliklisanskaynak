@@ -457,7 +457,11 @@ static async Task TestLegacyAppOptionsSurfaced()
     Assert(xaml.Contains("<ComboBoxItem Content=\"RAR\"", StringComparison.Ordinal), "rar option ui");
     Assert(xaml.IndexOf("LicensePanel", StringComparison.Ordinal) < xaml.IndexOf("LicenseEmailBox", StringComparison.Ordinal), "license email in license panel");
     Assert(xaml.Contains("E-posta ile Dogrula", StringComparison.Ordinal), "email restore button ui");
+    Assert(xaml.Contains("LİSANS İÇİN WHATSAPP İLETİŞİM: 0530 02218 38", StringComparison.Ordinal), "license whatsapp banner text");
+    Assert(xaml.Contains("WhatsApp iletişim: 0530 02218 38", StringComparison.Ordinal), "footer whatsapp text");
     Assert(mainCode.Contains("ValidateLicenseByEmail_Click", StringComparison.Ordinal), "email restore handler");
+    Assert(mainCode.Contains("LoadTrayIcon", StringComparison.Ordinal), "tray icon loader");
+    Assert(mainCode.Contains("Assets/myedek.ico", StringComparison.Ordinal), "tray icon asset");
     Assert(mainCode.Contains("ApplyStartupRegistration", StringComparison.Ordinal), "startup registry code");
     Assert(mainCode.Contains("BackupWarningWindow", StringComparison.Ordinal), "warning popup code");
     Assert(mainCode.Contains("TrySendBackupReportEmailAsync", StringComparison.Ordinal), "mail report code");

@@ -214,12 +214,32 @@ public partial class MainWindow : Window
 
         _trayIcon = new WinForms.NotifyIcon
         {
-            Icon = System.Drawing.SystemIcons.Application,
+            Icon = LoadTrayIcon(),
             Text = "MYedek - ResurrectSoft",
             ContextMenuStrip = menu,
             Visible = false
         };
         _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(RestoreFromTray);
+    }
+
+    private static System.Drawing.Icon LoadTrayIcon()
+    {
+        try
+        {
+            var resource = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Assets/myedek.ico"));
+            if (resource?.Stream is not null)
+            {
+                using var stream = resource.Stream;
+                using var icon = new System.Drawing.Icon(stream);
+                return (System.Drawing.Icon)icon.Clone();
+            }
+        }
+        catch
+        {
+            // Fallback keeps tray behavior working even if the resource cannot be read.
+        }
+
+        return System.Drawing.SystemIcons.Application;
     }
 
     private void HideToTray(bool showBalloon)

@@ -267,13 +267,13 @@
                         <TextBlock x:Name="PageTitleText" Text="Dashboard" Visibility="Collapsed"/>
                         <TextBlock x:Name="PageSubtitleText" Text="Yedekleme durumunu ve önemli uyarıları tek ekrandan takip edin." Visibility="Collapsed"/>
                         <TextBlock x:Name="LicenseBannerTitleText" Text="LİSANS GEREKLİ" Foreground="White" FontSize="32" FontWeight="Black" TextWrapping="Wrap" Effect="{StaticResource SidebarTextOutlineEffect}" ToolTip="Lisans yoksa lisans gerektiğini, lisans varsa yükseltme bilgisini gösterir."/>
-                        <TextBlock Text="LİSANS İÇİN WHATSAPPTAN BU NUMARADAN LİSANS TALEP EDİNİZ: 05300221838"
+                        <TextBlock Text="LİSANS İÇİN WHATSAPP İLETİŞİM: 0530 02218 38"
                                    Foreground="#D9FFEA"
                                    FontSize="21"
                                    FontWeight="Bold"
                                    TextWrapping="Wrap"
                                    Effect="{StaticResource SidebarTextOutlineEffect}"
-                                   ToolTip="Lisans almak için bu WhatsApp numarasından iletişim kurmanız gerekir: 05300221838"/>
+                                   ToolTip="Lisans için WhatsApp iletişim numarası: 0530 02218 38"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="Şimdi Yedekle" Style="{StaticResource PrimaryButtonStyle}" Click="RunBackup_Click" ToolTip="Ayarları kullanarak hemen manuel yedekleme başlatır. Lisans gerekiyorsa önce lisans kontrol edilir."/>
@@ -774,7 +774,7 @@
                     </StackPanel>
                     
                     <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
-                        <TextBlock Text="WhatsApp iletişim: 05300221838" VerticalAlignment="Center" Foreground="#128C4A" FontWeight="Bold" ToolTip="Lisans veya destek için WhatsApp iletişim numarası."/>
+                        <TextBlock Text="WhatsApp iletişim: 0530 02218 38" VerticalAlignment="Center" Foreground="#128C4A" FontWeight="Bold" ToolTip="Lisans veya destek için WhatsApp iletişim numarası."/>
                         <CheckBox x:Name="TooltipsEnabledCheck"
                                   Content="Açıklamalar"
                                   IsChecked="True"
