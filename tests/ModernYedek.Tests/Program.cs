@@ -25,6 +25,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Standard window chrome", TestStandardWindowChrome),
     ("Backup progress popup", TestBackupProgressPopup),
     ("Legacy app options surfaced", TestLegacyAppOptionsSurfaced),
+    ("Bootstrap installer assets", TestBootstrapInstallerAssets),
     ("Animated pattern background", TestAnimatedPatternBackground),
     ("Premium visual asset set", TestPremiumVisualAssetSet),
     ("Responsive visual constraints", TestResponsiveVisualConstraints),
@@ -475,6 +476,30 @@ static async Task TestLegacyAppOptionsSurfaced()
     Assert(importer.Contains("\"MAILMI\"", StringComparison.Ordinal), "legacy mail flag import");
     Assert(importer.Contains("\"SERVER\"", StringComparison.Ordinal), "legacy server flag import");
     Assert(importer.Contains("\"TEK\"", StringComparison.Ordinal), "legacy one time flag import");
+}
+
+static async Task TestBootstrapInstallerAssets()
+{
+    var installerDir = Path.Combine("installer");
+    var setupScriptPath = Path.Combine(installerDir, "MYedekSetup.ps1");
+    var setupCmdPath = Path.Combine(installerDir, "MYedekSetup.cmd");
+    var buildScriptPath = Path.Combine(installerDir, "build-installer.ps1");
+    var setupScript = await File.ReadAllTextAsync(setupScriptPath);
+    var setupCmd = await File.ReadAllTextAsync(setupCmdPath);
+    var buildScript = await File.ReadAllTextAsync(buildScriptPath);
+
+    Assert(File.Exists(setupScriptPath), "setup ps1 exists");
+    Assert(File.Exists(setupCmdPath), "setup cmd exists");
+    Assert(File.Exists(buildScriptPath), "setup build script exists");
+    Assert(setupScript.Contains("https://raw.githubusercontent.com/kul72107/Yedek-app/main/latest.json", StringComparison.Ordinal), "setup reads latest manifest");
+    Assert(setupScript.Contains("Get-FileHash -Algorithm SHA256", StringComparison.Ordinal), "setup verifies sha256");
+    Assert(setupScript.Contains("DesktopDirectory", StringComparison.Ordinal), "setup desktop shortcut");
+    Assert(setupScript.Contains("GetFolderPath(\"Programs\")", StringComparison.Ordinal), "setup start menu shortcut");
+    Assert(setupScript.Contains("$desktopCheck.Checked = $true", StringComparison.Ordinal), "desktop shortcut default checked");
+    Assert(setupScript.Contains("$startMenuCheck.Checked = $true", StringComparison.Ordinal), "start menu shortcut default checked");
+    Assert(setupScript.Contains("LocalApplicationData", StringComparison.Ordinal), "setup installs per user");
+    Assert(setupCmd.Contains("-STA", StringComparison.Ordinal), "setup runs in STA mode");
+    Assert(buildScript.Contains("iexpress.exe", StringComparison.OrdinalIgnoreCase), "setup exe build uses iexpress");
 }
 
 static async Task TestAnimatedPatternBackground()

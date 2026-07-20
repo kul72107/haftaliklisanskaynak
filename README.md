@@ -16,6 +16,14 @@ Derleyerek calistirmak icin:
 dotnet run --project D:\BITCH\ModernYedek\src\ModernYedek.App\ModernYedek.App.csproj
 ```
 
+## Installer
+
+Son kullanici setup dosyasi `installer/` altindaki bootstrap kaynaklarindan uretilir. Setup uygulamayi icine gommez; `latest.json` uzerinden en guncel release ZIP paketini indirir ve SHA256 ile dogrulayarak kurar.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\BITCH\ModernYedek\installer\build-installer.ps1
+```
+
 ## Ayarlar
 
 Uygulama ilk acilista `D:\yedek_kopya\yedekaldat.ini` dosyasini bulursa ayarlari otomatik ice aktarir. Sonraki ayarlar kullanici profilinde tutulur:
